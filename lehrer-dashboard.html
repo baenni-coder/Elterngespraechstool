@@ -1051,11 +1051,11 @@
                 console.log('✓ Verfügbarkeit aktualisiert');
                 console.log('=== SPEICHERVORGANG ERFOLGREICH ===');
 
-                // Sende automatisch E-Mails wenn aktiviert
-                await sendAutomaticEmails();
+                // Sende automatisch E-Mails wenn aktiviert (gibt Status zurück)
+                const emailResult = await sendAutomaticEmails();
 
-                // Zeige Erfolg und E-Mail/Kalender Optionen
-                showEmailKalenderOptionen();
+                // Zeige Erfolg und E-Mail/Kalender Optionen (mit Email-Status)
+                showEmailKalenderOptionen(emailResult);
 
             } catch (error) {
                 console.error('=== FEHLER ===');
@@ -1075,7 +1075,7 @@
                 const settingsDoc = await db.collection('settings').doc(currentUser.uid).get();
                 if (!settingsDoc.exists || !settingsDoc.data().auto_email_enabled) {
                     console.log('Auto E-Mail nicht aktiviert');
-                    return;
+                    return { enabled: false };
                 }
 
                 const settings = settingsDoc.data();
@@ -1083,7 +1083,7 @@
 
                 if (!emailjs_service_id || !emailjs_template_id || !emailjs_public_key) {
                     console.error('EmailJS nicht korrekt konfiguriert');
-                    return;
+                    return { enabled: true, success: 0, error: 0, configError: true };
                 }
 
                 // Initialisiere EmailJS
@@ -1132,25 +1132,35 @@
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
-                if (successCount > 0) {
-                    showMessage('zuteilung', `✓ ${successCount} E-Mail(s) erfolgreich versendet!`, 'success');
-                }
-                if (errorCount > 0) {
-                    showMessage('zuteilung', `⚠ ${errorCount} E-Mail(s) konnten nicht versendet werden. Bitte prüfen Sie die Konsole.`, 'error');
-                }
+                return { enabled: true, success: successCount, error: errorCount };
 
             } catch (error) {
                 console.error('Fehler beim automatischen E-Mail-Versand:', error);
-                showMessage('zuteilung', 'Fehler beim E-Mail-Versand: ' + error.message, 'error');
+                return { enabled: true, success: 0, error: 0, generalError: error.message };
             }
         }
 
-        function showEmailKalenderOptionen() {
+        function showEmailKalenderOptionen(emailResult) {
             const messageDiv = document.getElementById('zuteilung-message');
-            
+
             // Erstelle E-Mail-Vorlagen und Kalender-Downloads
             let html = '<div class="alert alert-success"><strong>✓ Zuteilungen gespeichert!</strong></div>';
-            
+
+            // Zeige E-Mail Status wenn Auto-E-Mail aktiviert war
+            if (emailResult && emailResult.enabled) {
+                if (emailResult.configError) {
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ EmailJS nicht korrekt konfiguriert.</strong><br>Bitte überprüfen Sie Ihre E-Mail-Einstellungen.</div>';
+                } else if (emailResult.generalError) {
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Fehler beim E-Mail-Versand:</strong> ' + emailResult.generalError + '</div>';
+                } else if (emailResult.success > 0 && emailResult.error === 0) {
+                    html += '<div class="alert alert-success" style="margin-top: 10px;"><strong>✓ ' + emailResult.success + ' E-Mail(s) erfolgreich versendet!</strong></div>';
+                } else if (emailResult.success > 0 && emailResult.error > 0) {
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Teilerfolg:</strong> ' + emailResult.success + ' E-Mail(s) versendet, ' + emailResult.error + ' fehlgeschlagen. Bitte prüfen Sie die Konsole.</div>';
+                } else if (emailResult.error > 0) {
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ E-Mail-Versand fehlgeschlagen:</strong> ' + emailResult.error + ' E-Mail(s) konnten nicht versendet werden. Bitte prüfen Sie die Konsole.</div>';
+                }
+            }
+
             html += '<div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 20px;">';
             html += '<h3 style="margin-bottom: 15px; color: #667eea;">📧 E-Mail-Benachrichtigungen</h3>';
             html += '<p style="color: #666; margin-bottom: 20px;">Kopieren Sie die E-Mail-Texte und senden Sie sie an die Eltern:</p>';
