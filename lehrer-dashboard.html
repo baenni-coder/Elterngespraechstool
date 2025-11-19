@@ -386,13 +386,19 @@
                 <div style="background: #e8f4f8; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
                     <h3 style="color: #667eea; margin-bottom: 15px;">⚙️ Einstellungen</h3>
 
+                    <!-- Name der Lehrperson -->
+                    <div class="form-group">
+                        <label>Ihr Name (optional)</label>
+                        <input type="text" id="teacher-name" placeholder="z.B. Frau Müller" style="width: 100%; max-width: 400px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Wird den Eltern im Formular angezeigt, damit sie die Formulare nicht verwechseln.</p>
+                    </div>
+
+                    <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
+
                     <!-- Mindestanzahl Termine -->
                     <div class="form-group">
                         <label>Mindestanzahl Termine (die Eltern auswählen müssen)</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="number" id="min-termine" min="1" max="10" value="3" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
-                            <button type="button" class="btn btn-primary" onclick="saveSettings()" style="padding: 10px 20px; font-size: 14px;">Speichern</button>
-                        </div>
+                        <input type="number" id="min-termine" min="1" max="10" value="3" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
                         <p style="color: #666; font-size: 13px; margin-top: 8px;">Die Eltern müssen mindestens diese Anzahl an Terminen ankreuzen.</p>
                     </div>
 
@@ -424,6 +430,8 @@
                             </div>
                         </div>
                     </div>
+
+                    <button type="button" class="btn btn-success" onclick="saveSettings()" style="margin-top: 20px; width: 100%;">💾 Einstellungen speichern</button>
                 </div>
 
                 <form id="termin-form" onsubmit="createTermin(event)">
@@ -695,6 +703,11 @@
                 if (doc.exists) {
                     const settings = doc.data();
 
+                    // Name der Lehrperson
+                    if (settings.teacher_name) {
+                        document.getElementById('teacher-name').value = settings.teacher_name;
+                    }
+
                     // Mindestanzahl Termine
                     document.getElementById('min-termine').value = settings.min_termine_anzahl || 3;
 
@@ -732,8 +745,10 @@
                 return;
             }
 
+            const teacherName = document.getElementById('teacher-name').value.trim();
             const autoEmailEnabled = document.getElementById('auto-email-enabled').checked;
             const settingsData = {
+                teacher_name: teacherName || null, // Speichere null wenn leer
                 min_termine_anzahl: minTermine,
                 auto_email_enabled: autoEmailEnabled,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
