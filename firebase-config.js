@@ -5,12 +5,13 @@
 // WICHTIG: Ersetze diese Werte mit deinen eigenen aus Firebase Console!
 // Gehe zu: Firebase Console > Projekteinstellungen > Deine Apps > SDK-Setup und -Konfiguration
 const firebaseConfig = {
-    apiKey: "DEIN_API_KEY",
-    authDomain: "DEIN_PROJEKT.firebaseapp.com",
-    projectId: "DEIN_PROJEKT_ID",
-    storageBucket: "DEIN_PROJEKT.appspot.com",
-    messagingSenderId: "DEINE_SENDER_ID",
-    appId: "DEINE_APP_ID"
+  apiKey: "AIzaSyCgowrNGd0TasK5QusQURdWBKRcB3vmCus",
+  authDomain: "elterngespraechs-tool.firebaseapp.com",
+  projectId: "elterngespraechs-tool",
+  storageBucket: "elterngespraechs-tool.firebasestorage.app",
+  messagingSenderId: "911556449022",
+  appId: "1:911556449022:web:bd2f33cb4714538c438baf",
+  measurementId: "G-QQQZH44E7H"
 };
 
 // Firebase initialisieren
