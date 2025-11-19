@@ -12,26 +12,30 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Termine: Nur der Ersteller kann lesen, schreiben, löschen
+    // Termine: Jeder kann verfügbare Termine lesen (für Eltern-Formular),
+    // aber nur der Ersteller kann sie bearbeiten/löschen
     match /termine/{terminId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Öffentlich lesbar für Eltern-Formular
       allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
     }
 
     // Antworten: Jeder kann erstellen (auch ohne Login),
-    // aber nur der zugehörige Lehrer kann sie lesen
+    // aber nur eingeloggte Lehrer können alle lesen
     match /antworten/{antwortId} {
       allow read: if isSignedIn();
       allow create: if true; // Eltern können ohne Login antworten
-      allow update, delete: if false; // Kann nicht bearbeitet oder gelöscht werden
+      allow update: if false; // Kann nicht bearbeitet werden
+      allow delete: if isSignedIn(); // Lehrer können löschen
     }
 
-    // Zuteilungen: Nur eingeloggte Lehrer können lesen und schreiben
+    // Zuteilungen: Jeder kann sie lesen (für Eltern-Formular zur Prüfung ob Termin frei),
+    // aber nur eingeloggte Lehrer können sie erstellen/löschen
     match /zuteilungen/{zuteilungId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Öffentlich lesbar
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
   }
 }
