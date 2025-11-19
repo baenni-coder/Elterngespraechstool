@@ -259,7 +259,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label>Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span></label>
+                        <label id="termine-label">Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span></label>
                         <div class="checkbox-group" id="termine-list"></div>
                     </div>
                     
@@ -285,20 +285,37 @@
     <script>
         let teacherId = null;
         let verfuegbareTermine = [];
-        
+        let minTermineAnzahl = 3; // Standardwert
+
         // Beim Laden: Lehrer-ID aus URL holen und Termine laden
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             teacherId = urlParams.get('teacher');
-            
+
             if (!teacherId) {
                 showError('Ungültiger Link. Bitte verwenden Sie den Link, den Sie von der Lehrperson erhalten haben.');
                 return;
             }
-            
+
+            await loadSettings();
             await loadTermine();
         };
         
+        async function loadSettings() {
+            try {
+                const doc = await db.collection('settings').doc(teacherId).get();
+                if (doc.exists) {
+                    const settings = doc.data();
+                    minTermineAnzahl = settings.min_termine_anzahl || 3;
+                } else {
+                    minTermineAnzahl = 3; // Standardwert
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der Einstellungen:', error);
+                minTermineAnzahl = 3; // Standardwert
+            }
+        }
+
         async function loadTermine() {
             try {
                 // Hole alle verfügbaren Termine dieser Lehrperson
@@ -350,7 +367,11 @@
         function displayTermine(termine) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('form-container').style.display = 'block';
-            
+
+            // Aktualisiere Label mit Mindestanzahl
+            const label = document.getElementById('termine-label');
+            label.innerHTML = `Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${minTermineAnzahl} ${minTermineAnzahl === 1 ? 'Termin' : 'Termine'} auswählen)</span>`;
+
             const termineList = document.getElementById('termine-list');
             termineList.innerHTML = '';
             
@@ -396,6 +417,11 @@
 
             if (selectedTermine.length === 0) {
                 showError('Bitte wählen Sie mindestens einen Termin aus.');
+                return;
+            }
+
+            if (selectedTermine.length < minTermineAnzahl) {
+                showError(`Bitte wählen Sie mindestens ${minTermineAnzahl} ${minTermineAnzahl === 1 ? 'Termin' : 'Termine'} aus. Sie haben ${selectedTermine.length} ${selectedTermine.length === 1 ? 'Termin' : 'Termine'} ausgewählt.`);
                 return;
             }
 

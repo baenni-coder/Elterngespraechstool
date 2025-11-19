@@ -37,5 +37,12 @@ service cloud.firestore {
       allow update: if isSignedIn();
       allow delete: if isSignedIn();
     }
+
+    // Settings: Jeder kann lesen (für Eltern-Formular),
+    // aber nur der Besitzer kann schreiben
+    match /settings/{userId} {
+      allow read: if true; // Öffentlich lesbar für Eltern-Formular
+      allow write: if isOwner(userId);
+    }
   }
 }
