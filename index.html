@@ -102,6 +102,42 @@
             font-size: 14px;
             color: #0c5460;
         }
+
+        .btn-child {
+            background: #2ecc71;
+            color: white;
+            position: relative;
+            padding-right: 50px;
+        }
+
+            .btn-child:hover {
+                background: #27ae60;
+                transform: translateY(-2px);
+            }
+
+        .btn-delete {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+            .btn-delete:hover {
+                background: rgba(192, 57, 43, 1);
+            }
+
+        #kinder-buttons {
+            display: contents;
+        }
     </style>
 </head>
 <body>
@@ -115,7 +151,10 @@
                 <small style="font-weight: normal; font-size: 14px;">Termine verwalten & zuteilen</small>
             </a>
 
-            <a href="eltern-formular.html" class="btn btn-secondary">
+            <!-- Dynamische Buttons für gespeicherte Kinder werden hier eingefügt -->
+            <div id="kinder-buttons"></div>
+
+            <a href="eltern-formular.html" class="btn btn-secondary" id="eltern-default-btn">
                 👪 Für Eltern<br>
                 <small style="font-weight: normal; font-size: 14px;">Verfügbarkeit angeben</small>
             </a>
@@ -126,5 +165,66 @@
             <strong>Für Lehrpersonen:</strong> Melden Sie sich an, um Termine zu erstellen und zuzuteilen.
         </div>
     </div>
+
+    <script>
+        // Beim Laden: Gespeicherte Kinder-Links anzeigen
+        window.onload = function() {
+            loadSavedChildren();
+        };
+
+        function loadSavedChildren() {
+            try {
+                // Hole gespeicherte Kinder aus localStorage
+                const kinder = JSON.parse(localStorage.getItem('elterngespraech_kinder') || '[]');
+
+                if (kinder.length > 0) {
+                    const container = document.getElementById('kinder-buttons');
+                    const defaultBtn = document.getElementById('eltern-default-btn');
+
+                    // Erstelle für jedes Kind einen Button
+                    kinder.forEach((kind, index) => {
+                        const link = document.createElement('a');
+                        link.href = `eltern-formular.html?teacher=${kind.teacherId}`;
+                        link.className = 'btn btn-child';
+                        link.innerHTML = `
+                            👶 ${kind.kindname}<br>
+                            <small style="font-weight: normal; font-size: 14px;">Verfügbarkeit angeben</small>
+                            <button class="btn-delete" onclick="event.preventDefault(); deleteChild(${index})">✕</button>
+                        `;
+                        container.appendChild(link);
+                    });
+
+                    // Ändere den Standard-Button zu "Weiteres Kind hinzufügen"
+                    defaultBtn.innerHTML = `
+                        ➕ Weiteres Kind hinzufügen<br>
+                        <small style="font-weight: normal; font-size: 14px;">Neue Verfügbarkeit angeben</small>
+                    `;
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der gespeicherten Kinder:', error);
+            }
+        }
+
+        function deleteChild(index) {
+            if (confirm('Möchten Sie diesen Link wirklich entfernen?')) {
+                try {
+                    // Hole aktuelle Liste
+                    let kinder = JSON.parse(localStorage.getItem('elterngespraech_kinder') || '[]');
+
+                    // Entferne das Kind an der gegebenen Position
+                    kinder.splice(index, 1);
+
+                    // Speichere zurück
+                    localStorage.setItem('elterngespraech_kinder', JSON.stringify(kinder));
+
+                    // Seite neu laden um Änderungen anzuzeigen
+                    location.reload();
+                } catch (error) {
+                    console.error('Fehler beim Löschen:', error);
+                    alert('Fehler beim Entfernen des Links.');
+                }
+            }
+        }
+    </script>
 </body>
 </html>

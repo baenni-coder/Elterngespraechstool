@@ -449,6 +449,9 @@
 
                 console.log('=== SUCCESS ===');
 
+                // Speichere Link im localStorage für einfachen Zugriff
+                saveChildLink(kindname, teacherId);
+
                 // Zeige Erfolg
                 document.getElementById('form-container').style.display = 'none';
                 document.getElementById('success-message').style.display = 'block';
@@ -474,6 +477,31 @@
         
         function showInfo(text) {
             document.getElementById('message').innerHTML = `<div class="alert alert-info">${text}</div>`;
+        }
+
+        function saveChildLink(kindname, teacherId) {
+            try {
+                // Hole existierende Kinder aus localStorage
+                let kinder = JSON.parse(localStorage.getItem('elterngespraech_kinder') || '[]');
+
+                // Prüfe ob dieser Eintrag bereits existiert (gleicher Name und teacherId)
+                const exists = kinder.some(k => k.kindname === kindname && k.teacherId === teacherId);
+
+                if (!exists) {
+                    // Füge neues Kind hinzu
+                    kinder.push({
+                        kindname: kindname,
+                        teacherId: teacherId,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    // Speichere zurück
+                    localStorage.setItem('elterngespraech_kinder', JSON.stringify(kinder));
+                    console.log('Link gespeichert für:', kindname);
+                }
+            } catch (error) {
+                console.error('Fehler beim Speichern im localStorage:', error);
+            }
         }
     </script>
 </body>
