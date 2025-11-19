@@ -229,13 +229,55 @@
         .back-link a:hover {
             text-decoration: underline;
         }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            margin-top: 15px;
+        }
+
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+
+        .kinder-liste {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .kind-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .kind-item input {
+            flex: 1;
+        }
+
+        .btn-remove {
+            padding: 14px 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn-remove:hover {
+            background: #c0392b;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>📅 Elterngespräch</h1>
-            <p>Bitte wählen Sie Ihre verfügbaren Termine</p>
+            <p id="header-subtitle">Bitte wählen Sie Ihre verfügbaren Termine</p>
         </div>
         
         <div class="content">
@@ -249,20 +291,25 @@
                 
                 <form id="eltern-form" onsubmit="submitForm(event)">
                     <div class="form-group">
-                        <label>Name Ihres Kindes *</label>
-                        <input type="text" id="kindname" required placeholder="z.B. Max Muster">
+                        <label>Namen Ihrer Kinder * <span style="font-weight: normal; color: #666;">(für die gleichen Termine)</span></label>
+                        <div class="kinder-liste" id="kinder-liste">
+                            <div class="kind-item">
+                                <input type="text" class="kindname" required placeholder="z.B. Max Muster">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="addKind()">➕ Weiteres Kind hinzufügen</button>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Ihre E-Mail-Adresse *</label>
                         <input type="email" id="email" required placeholder="ihre.email@beispiel.ch">
                     </div>
-                    
+
                     <div class="form-group">
                         <label id="termine-label">Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span></label>
                         <div class="checkbox-group" id="termine-list"></div>
                     </div>
-                    
+
                     <button type="submit" class="btn" id="submit-btn">Verfügbarkeit absenden</button>
                 </form>
             </div>
@@ -286,6 +333,7 @@
         let teacherId = null;
         let verfuegbareTermine = [];
         let minTermineAnzahl = 3; // Standardwert
+        let teacherName = '';
 
         // Beim Laden: Lehrer-ID aus URL holen und Termine laden
         window.onload = async () => {
@@ -297,9 +345,33 @@
                 return;
             }
 
+            // Speichere Link im localStorage
+            saveLastLink(teacherId);
+
+            await loadTeacherName();
             await loadSettings();
             await loadTermine();
         };
+
+        async function loadTeacherName() {
+            try {
+                // Versuche den Namen aus den Settings zu holen
+                const settingsDoc = await db.collection('settings').doc(teacherId).get();
+
+                if (settingsDoc.exists && settingsDoc.data().teacher_name) {
+                    teacherName = settingsDoc.data().teacher_name;
+                    // Aktualisiere Untertitel
+                    document.getElementById('header-subtitle').textContent = `Lehrperson: ${teacherName}`;
+                } else {
+                    // Kein Name in Settings: Zeige Standard-Untertitel
+                    document.getElementById('header-subtitle').textContent = 'Bitte wählen Sie Ihre verfügbaren Termine';
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden des Lehrernamens:', error);
+                // Fallback: Zeige generischen Text
+                document.getElementById('header-subtitle').textContent = 'Bitte wählen Sie Ihre verfügbaren Termine';
+            }
+        }
         
         async function loadSettings() {
             try {
@@ -404,10 +476,44 @@
             });
         }
         
+        function addKind() {
+            const kinderListe = document.getElementById('kinder-liste');
+            const kindItem = document.createElement('div');
+            kindItem.className = 'kind-item';
+            kindItem.innerHTML = `
+                <input type="text" class="kindname" required placeholder="z.B. Anna Muster">
+                <button type="button" class="btn-remove" onclick="removeKind(this)">✕</button>
+            `;
+            kinderListe.appendChild(kindItem);
+        }
+
+        function removeKind(button) {
+            const kinderListe = document.getElementById('kinder-liste');
+            // Erlaube Entfernen nur wenn mehr als 1 Kind vorhanden
+            if (kinderListe.children.length > 1) {
+                button.parentElement.remove();
+            } else {
+                alert('Mindestens ein Kind muss angegeben werden.');
+            }
+        }
+
         async function submitForm(e) {
             e.preventDefault();
 
-            const kindname = document.getElementById('kindname').value.trim();
+            // Hole alle Kindnamen
+            const kindnamen = [];
+            document.querySelectorAll('.kindname').forEach(input => {
+                const name = input.value.trim();
+                if (name) {
+                    kindnamen.push(name);
+                }
+            });
+
+            if (kindnamen.length === 0) {
+                showError('Bitte geben Sie mindestens einen Kindnamen ein.');
+                return;
+            }
+
             const email = document.getElementById('email').value.trim();
 
             const selectedTermine = [];
@@ -430,27 +536,28 @@
             btn.textContent = 'Wird gesendet...';
 
             try {
-                // Daten für Firestore vorbereiten
-                const dataToInsert = {
-                    termin_gruppe_id: teacherId,
-                    kindname: kindname,
-                    email: email,
-                    verfuegbare_termine: selectedTermine,
-                    created_at: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
                 console.log('=== DEBUG: Versuche zu senden ===');
                 console.log('teacherId:', teacherId);
-                console.log('Data:', dataToInsert);
+                console.log('Kinder:', kindnamen);
+                console.log('E-Mail:', email);
                 console.log('Selected Termine:', selectedTermine);
 
-                // Speichere in Firestore
-                await db.collection('antworten').add(dataToInsert);
+                // Erstelle für jedes Kind einen separaten Eintrag
+                for (const kindname of kindnamen) {
+                    const dataToInsert = {
+                        termin_gruppe_id: teacherId,
+                        kindname: kindname,
+                        email: email,
+                        verfuegbare_termine: selectedTermine,
+                        created_at: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    // Speichere in Firestore
+                    await db.collection('antworten').add(dataToInsert);
+                    console.log(`✓ Gespeichert für: ${kindname}`);
+                }
 
                 console.log('=== SUCCESS ===');
-
-                // Speichere Link im localStorage für einfachen Zugriff
-                saveChildLink(kindname, teacherId);
 
                 // Zeige Erfolg
                 document.getElementById('form-container').style.display = 'none';
@@ -479,26 +586,11 @@
             document.getElementById('message').innerHTML = `<div class="alert alert-info">${text}</div>`;
         }
 
-        function saveChildLink(kindname, teacherId) {
+        function saveLastLink(teacherId) {
             try {
-                // Hole existierende Kinder aus localStorage
-                let kinder = JSON.parse(localStorage.getItem('elterngespraech_kinder') || '[]');
-
-                // Prüfe ob dieser Eintrag bereits existiert (gleicher Name und teacherId)
-                const exists = kinder.some(k => k.kindname === kindname && k.teacherId === teacherId);
-
-                if (!exists) {
-                    // Füge neues Kind hinzu
-                    kinder.push({
-                        kindname: kindname,
-                        teacherId: teacherId,
-                        timestamp: new Date().toISOString()
-                    });
-
-                    // Speichere zurück
-                    localStorage.setItem('elterngespraech_kinder', JSON.stringify(kinder));
-                    console.log('Link gespeichert für:', kindname);
-                }
+                // Speichere den letzten verwendeten Link (teacherId)
+                localStorage.setItem('elterngespraech_last_link', teacherId);
+                console.log('Letzter Link gespeichert');
             } catch (error) {
                 console.error('Fehler beim Speichern im localStorage:', error);
             }
