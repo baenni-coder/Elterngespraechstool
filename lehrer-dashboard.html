@@ -368,9 +368,9 @@
         
         <div class="tabs">
             <div class="tab active" onclick="switchTab('termine')">📅 Meine Termine</div>
+            <div class="tab" onclick="switchTab('share')">🔗 Link teilen</div>
             <div class="tab" onclick="switchTab('antworten')">📨 Eltern-Antworten (<span id="antworten-count">0</span>)</div>
             <div class="tab" onclick="switchTab('zuteilung')">✅ Zuteilung</div>
-            <div class="tab" onclick="switchTab('share')">🔗 Link teilen</div>
             <div class="tab" onclick="switchTab('verwaltung')">⚙️ Verwaltung</div>
         </div>
         
@@ -379,7 +379,20 @@
             <div id="tab-termine" class="tab-content active">
                 <h2>Termine erstellen</h2>
                 <p style="color: #666; margin-bottom: 20px;">Erstellen Sie Termine für Elterngespräche.</p>
-                
+
+                <!-- Mindestanzahl Einstellung -->
+                <div style="background: #e8f4f8; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">⚙️ Einstellungen für Eltern-Formular</h3>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Mindestanzahl Termine (die Eltern auswählen müssen)</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="min-termine" min="1" max="10" value="3" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <button type="button" class="btn btn-primary" onclick="saveMinTermine()" style="padding: 10px 20px; font-size: 14px;">Speichern</button>
+                        </div>
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Die Eltern müssen mindestens diese Anzahl an Terminen ankreuzen.</p>
+                    </div>
+                </div>
+
                 <form id="termin-form" onsubmit="createTermin(event)">
                     <div class="form-row">
                         <div class="form-group">
@@ -519,18 +532,19 @@
             // Daten laden
             await loadTermine();
             await loadAntworten();
+            await loadSettings();
         };
         
         function switchTab(tabName) {
             // Tabs
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            const tabIndex = { termine: 1, antworten: 2, zuteilung: 3, share: 4, verwaltung: 5 }[tabName];
+            const tabIndex = { termine: 1, share: 2, antworten: 3, zuteilung: 4, verwaltung: 5 }[tabName];
             document.querySelector(`.tab:nth-child(${tabIndex})`).classList.add('active');
-            
+
             // Content
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById('tab-' + tabName).classList.add('active');
-            
+
             // Wenn Zuteilung geöffnet wird, lade die Daten
             if (tabName === 'zuteilung') {
                 loadZuteilungsView();
@@ -639,6 +653,42 @@
 
             } catch (error) {
                 alert('Fehler beim Löschen: ' + error.message);
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const doc = await db.collection('settings').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    const settings = doc.data();
+                    document.getElementById('min-termine').value = settings.min_termine_anzahl || 3;
+                } else {
+                    // Standardwert setzen wenn noch keine Einstellung existiert
+                    document.getElementById('min-termine').value = 3;
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der Einstellungen:', error);
+                document.getElementById('min-termine').value = 3;
+            }
+        }
+
+        async function saveMinTermine() {
+            const minTermine = parseInt(document.getElementById('min-termine').value);
+
+            if (minTermine < 1 || minTermine > 10) {
+                alert('Bitte geben Sie eine Zahl zwischen 1 und 10 ein.');
+                return;
+            }
+
+            try {
+                await db.collection('settings').doc(currentUser.uid).set({
+                    min_termine_anzahl: minTermine,
+                    updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                showMessage('termine', '✓ Einstellung erfolgreich gespeichert!', 'success');
+            } catch (error) {
+                showMessage('termine', 'Fehler beim Speichern: ' + error.message, 'error');
             }
         }
         
