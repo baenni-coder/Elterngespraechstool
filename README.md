@@ -185,6 +185,18 @@ Du kannst die App auch auf GitHub Pages hosten:
 }
 ```
 
+### Collection: `settings`
+```
+{
+  min_termine_anzahl: number
+  auto_email_enabled: boolean
+  emailjs_service_id: string (optional)
+  emailjs_template_id: string (optional)
+  emailjs_public_key: string (optional)
+  updated_at: timestamp
+}
+```
+
 ## Sicherheit
 
 - **Authentication:** Nur registrierte Lehrpersonen können Termine erstellen und verwalten
@@ -200,6 +212,92 @@ Du kannst die App auch auf GitHub Pages hosten:
   - Firebase Authentication (E-Mail/Passwort)
   - Cloud Firestore (NoSQL Datenbank)
   - Firebase Hosting (optional)
+
+## Automatischer E-Mail-Versand (Optional)
+
+Das Tool unterstützt optional automatischen E-Mail-Versand nach dem Zuteilen der Termine über **EmailJS**.
+
+### EmailJS Setup
+
+1. **Kostenloses Konto erstellen:**
+   - Gehe zu [https://www.emailjs.com/](https://www.emailjs.com/)
+   - Erstelle ein kostenloses Konto (200 E-Mails/Monat)
+
+2. **E-Mail Service verbinden:**
+   - Im Dashboard: Gehe zu **Email Services** > **Add New Service**
+   - Wähle deinen E-Mail-Provider (Gmail, Outlook, etc.)
+   - Folge den Anweisungen zur Verbindung
+
+3. **E-Mail Template erstellen:**
+   - Gehe zu **Email Templates** > **Create New Template**
+   - Verwende folgende Template-Variablen:
+     ```
+     Betreff: Termin für Elterngespräch - {{to_name}}
+
+     Guten Tag
+
+     Hiermit bestätige ich den Termin für unser Elterngespräch:
+
+     Kind: {{to_name}}
+     Datum: {{termin_datum}}
+     Uhrzeit: {{termin_zeit}} Uhr
+     Dauer: {{termin_dauer}} Minuten
+
+     Ich freue mich auf unser Gespräch.
+
+     Mit freundlichen Grüssen
+     {{lehrer_email}}
+     ```
+   - Speichere das Template und notiere die **Template ID**
+
+4. **API Keys holen:**
+   - Gehe zu **Account** > **General**
+   - Kopiere deine **Public Key** (user_...)
+   - Notiere die **Service ID** (service_...)
+
+5. **Im Lehrer-Dashboard konfigurieren:**
+   - Logge dich ein
+   - Tab "Meine Termine" > Einstellungen
+   - Aktiviere "Automatischer E-Mail-Versand"
+   - Trage ein:
+     - EmailJS Service ID
+     - EmailJS Template ID
+     - EmailJS Public Key
+   - Klicke auf "Speichern"
+
+### E-Mail Template Variablen
+
+Das System sendet folgende Variablen an EmailJS:
+
+| Variable | Beschreibung |
+|----------|--------------|
+| `to_email` | E-Mail-Adresse der Eltern |
+| `to_name` | Name des Kindes |
+| `termin_datum` | Formatiertes Datum (z.B. "Montag, 15. Januar 2024") |
+| `termin_zeit` | Uhrzeit (z.B. "14:30") |
+| `termin_dauer` | Dauer in Minuten (z.B. "30") |
+| `lehrer_email` | Deine E-Mail-Adresse |
+
+### Verwendung
+
+Nach dem Setup werden E-Mails automatisch versendet, wenn du:
+1. Termine zuteilst (Tab "Zuteilung")
+2. Auf "Zuteilungen speichern" klickst
+3. Der automatische E-Mail-Versand aktiviert ist
+
+Du siehst eine Erfolgsmeldung mit der Anzahl versendeter E-Mails.
+
+### Kosten
+
+- EmailJS Free: 200 E-Mails/Monat kostenlos
+- Für mehr E-Mails: Kostenpflichtige Pläne ab $7/Monat
+
+### Alternative: Manuelle E-Mails
+
+Wenn du keinen automatischen Versand möchtest:
+- E-Mail-Vorlagen sind weiterhin verfügbar
+- Kopiere den Text und sende manuell
+- Oder verwende mailto-Links aus den E-Mail-Vorlagen
 
 ## Troubleshooting
 

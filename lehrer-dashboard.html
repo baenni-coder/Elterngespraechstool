@@ -9,6 +9,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -380,16 +382,47 @@
                 <h2>Termine erstellen</h2>
                 <p style="color: #666; margin-bottom: 20px;">Erstellen Sie Termine für Elterngespräche.</p>
 
-                <!-- Mindestanzahl Einstellung -->
+                <!-- Einstellungen -->
                 <div style="background: #e8f4f8; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
-                    <h3 style="color: #667eea; margin-bottom: 15px;">⚙️ Einstellungen für Eltern-Formular</h3>
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">⚙️ Einstellungen</h3>
+
+                    <!-- Mindestanzahl Termine -->
+                    <div class="form-group">
                         <label>Mindestanzahl Termine (die Eltern auswählen müssen)</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="number" id="min-termine" min="1" max="10" value="3" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
-                            <button type="button" class="btn btn-primary" onclick="saveMinTermine()" style="padding: 10px 20px; font-size: 14px;">Speichern</button>
+                            <button type="button" class="btn btn-primary" onclick="saveSettings()" style="padding: 10px 20px; font-size: 14px;">Speichern</button>
                         </div>
                         <p style="color: #666; font-size: 13px; margin-top: 8px;">Die Eltern müssen mindestens diese Anzahl an Terminen ankreuzen.</p>
+                    </div>
+
+                    <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
+
+                    <!-- E-Mail Einstellungen -->
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="auto-email-enabled" style="width: 20px; height: 20px; cursor: pointer;">
+                            <span>Automatischer E-Mail-Versand aktivieren (optional)</span>
+                        </label>
+                        <p style="color: #666; font-size: 13px; margin-top: 8px; margin-bottom: 15px;">
+                            Wenn aktiviert, werden E-Mails automatisch nach dem Zuteilen versendet.<br>
+                            <strong>Setup erforderlich:</strong> Siehe README für Anleitung zur EmailJS-Konfiguration.
+                        </p>
+
+                        <div id="email-settings" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 6px;">
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label style="font-size: 14px;">EmailJS Service ID</label>
+                                <input type="text" id="emailjs-service-id" placeholder="z.B. service_abc123" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label style="font-size: 14px;">EmailJS Template ID</label>
+                                <input type="text" id="emailjs-template-id" placeholder="z.B. template_xyz789" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 14px;">EmailJS Public Key</label>
+                                <input type="text" id="emailjs-public-key" placeholder="z.B. user_abc123xyz" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -661,10 +694,29 @@
                 const doc = await db.collection('settings').doc(currentUser.uid).get();
                 if (doc.exists) {
                     const settings = doc.data();
+
+                    // Mindestanzahl Termine
                     document.getElementById('min-termine').value = settings.min_termine_anzahl || 3;
+
+                    // E-Mail Einstellungen
+                    const autoEmailEnabled = settings.auto_email_enabled || false;
+                    document.getElementById('auto-email-enabled').checked = autoEmailEnabled;
+                    document.getElementById('email-settings').style.display = autoEmailEnabled ? 'block' : 'none';
+
+                    if (settings.emailjs_service_id) {
+                        document.getElementById('emailjs-service-id').value = settings.emailjs_service_id;
+                    }
+                    if (settings.emailjs_template_id) {
+                        document.getElementById('emailjs-template-id').value = settings.emailjs_template_id;
+                    }
+                    if (settings.emailjs_public_key) {
+                        document.getElementById('emailjs-public-key').value = settings.emailjs_public_key;
+                    }
                 } else {
-                    // Standardwert setzen wenn noch keine Einstellung existiert
+                    // Standardwerte setzen
                     document.getElementById('min-termine').value = 3;
+                    document.getElementById('auto-email-enabled').checked = false;
+                    document.getElementById('email-settings').style.display = 'none';
                 }
             } catch (error) {
                 console.error('Fehler beim Laden der Einstellungen:', error);
@@ -672,7 +724,7 @@
             }
         }
 
-        async function saveMinTermine() {
+        async function saveSettings() {
             const minTermine = parseInt(document.getElementById('min-termine').value);
 
             if (minTermine < 1 || minTermine > 10) {
@@ -680,17 +732,46 @@
                 return;
             }
 
-            try {
-                await db.collection('settings').doc(currentUser.uid).set({
-                    min_termine_anzahl: minTermine,
-                    updated_at: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+            const autoEmailEnabled = document.getElementById('auto-email-enabled').checked;
+            const settingsData = {
+                min_termine_anzahl: minTermine,
+                auto_email_enabled: autoEmailEnabled,
+                updated_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
-                showMessage('termine', '✓ Einstellung erfolgreich gespeichert!', 'success');
+            // Speichere EmailJS Einstellungen nur wenn aktiviert
+            if (autoEmailEnabled) {
+                settingsData.emailjs_service_id = document.getElementById('emailjs-service-id').value.trim();
+                settingsData.emailjs_template_id = document.getElementById('emailjs-template-id').value.trim();
+                settingsData.emailjs_public_key = document.getElementById('emailjs-public-key').value.trim();
+
+                // Validiere EmailJS Felder
+                if (!settingsData.emailjs_service_id || !settingsData.emailjs_template_id || !settingsData.emailjs_public_key) {
+                    alert('Bitte füllen Sie alle EmailJS-Felder aus oder deaktivieren Sie den automatischen E-Mail-Versand.');
+                    return;
+                }
+            }
+
+            try {
+                await db.collection('settings').doc(currentUser.uid).set(settingsData, { merge: true });
+
+                showMessage('termine', '✓ Einstellungen erfolgreich gespeichert!', 'success');
             } catch (error) {
                 showMessage('termine', 'Fehler beim Speichern: ' + error.message, 'error');
             }
         }
+
+        // Toggle E-Mail Einstellungen
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('auto-email-enabled');
+            const emailSettings = document.getElementById('email-settings');
+
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    emailSettings.style.display = checkbox.checked ? 'block' : 'none';
+                });
+            }
+        });
         
         async function loadAntworten() {
             const liste = document.getElementById('antworten-liste');
@@ -970,6 +1051,9 @@
                 console.log('✓ Verfügbarkeit aktualisiert');
                 console.log('=== SPEICHERVORGANG ERFOLGREICH ===');
 
+                // Sende automatisch E-Mails wenn aktiviert
+                await sendAutomaticEmails();
+
                 // Zeige Erfolg und E-Mail/Kalender Optionen
                 showEmailKalenderOptionen();
 
@@ -984,7 +1068,83 @@
                 btn.textContent = originalText;
             }
         }
-        
+
+        async function sendAutomaticEmails() {
+            try {
+                // Prüfe ob Auto-E-Mail aktiviert ist
+                const settingsDoc = await db.collection('settings').doc(currentUser.uid).get();
+                if (!settingsDoc.exists || !settingsDoc.data().auto_email_enabled) {
+                    console.log('Auto E-Mail nicht aktiviert');
+                    return;
+                }
+
+                const settings = settingsDoc.data();
+                const { emailjs_service_id, emailjs_template_id, emailjs_public_key } = settings;
+
+                if (!emailjs_service_id || !emailjs_template_id || !emailjs_public_key) {
+                    console.error('EmailJS nicht korrekt konfiguriert');
+                    return;
+                }
+
+                // Initialisiere EmailJS
+                emailjs.init(emailjs_public_key);
+
+                console.log('Sende automatische E-Mails...');
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                // Sende E-Mail für jede Zuteilung
+                for (const [antwortId, terminId] of Object.entries(assignments)) {
+                    const antwort = allAntworten.find(a => a.id === antwortId);
+                    const termin = allTermine.find(t => t.id === terminId);
+
+                    if (!antwort || !termin) continue;
+
+                    const datum = new Date(termin.datum);
+                    const formattedDate = datum.toLocaleDateString('de-CH', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+
+                    // Template Parameter für EmailJS
+                    const templateParams = {
+                        to_email: antwort.email,
+                        to_name: antwort.kindname,
+                        termin_datum: formattedDate,
+                        termin_zeit: termin.zeit,
+                        termin_dauer: termin.dauer_minuten,
+                        lehrer_email: currentUser.email
+                    };
+
+                    try {
+                        await emailjs.send(emailjs_service_id, emailjs_template_id, templateParams);
+                        successCount++;
+                        console.log(`✓ E-Mail gesendet an ${antwort.email}`);
+                    } catch (error) {
+                        errorCount++;
+                        console.error(`✗ Fehler beim Senden an ${antwort.email}:`, error);
+                    }
+
+                    // Kleine Pause zwischen E-Mails (EmailJS Rate Limit)
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                if (successCount > 0) {
+                    showMessage('zuteilung', `✓ ${successCount} E-Mail(s) erfolgreich versendet!`, 'success');
+                }
+                if (errorCount > 0) {
+                    showMessage('zuteilung', `⚠ ${errorCount} E-Mail(s) konnten nicht versendet werden. Bitte prüfen Sie die Konsole.`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Fehler beim automatischen E-Mail-Versand:', error);
+                showMessage('zuteilung', 'Fehler beim E-Mail-Versand: ' + error.message, 'error');
+            }
+        }
+
         function showEmailKalenderOptionen() {
             const messageDiv = document.getElementById('zuteilung-message');
             
