@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elterngespräch - Terminwahl</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <style>
         * {
             margin: 0;
@@ -299,45 +302,45 @@
         async function loadTermine() {
             try {
                 // Hole alle verfügbaren Termine dieser Lehrperson
-                const { data: termine, error: termineError } = await supabase
-                    .from('termine')
-                    .select('*')
-                    .eq('user_id', teacherId)
-                    .eq('ist_verfuegbar', true)
-                    .order('datum', { ascending: true })
-                    .order('zeit', { ascending: true });
-                
-                if (termineError) throw termineError;
-                
+                const termineSnapshot = await db.collection('termine')
+                    .where('user_id', '==', teacherId)
+                    .where('ist_verfuegbar', '==', true)
+                    .orderBy('datum', 'asc')
+                    .orderBy('zeit', 'asc')
+                    .get();
+
+                const termine = termineSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
                 if (!termine || termine.length === 0) {
                     showError('Aktuell sind keine Termine verfügbar. Bitte kontaktieren Sie die Lehrperson.');
                     return;
                 }
-                
+
                 // Hole bereits zugeteilte Termine
-                const { data: zuteilungen, error: zuteilungenError } = await supabase
-                    .from('zuteilungen')
-                    .select('termin_id')
-                    .in('termin_id', termine.map(t => t.id));
-                
-                if (zuteilungenError) throw zuteilungenError;
-                
+                const zuteilungenSnapshot = await db.collection('zuteilungen')
+                    .where('termin_id', 'in', termine.map(t => t.id))
+                    .get();
+
+                const zugeteilteIds = zuteilungenSnapshot.docs.map(doc => doc.data().termin_id);
+
                 // Filtere bereits zugeteilte Termine raus
-                const zugeteilteIds = zuteilungen ? zuteilungen.map(z => z.termin_id) : [];
                 verfuegbareTermine = termine.filter(t => !zugeteilteIds.includes(t.id));
-                
+
                 if (verfuegbareTermine.length === 0) {
                     showWarning('Alle Termine sind bereits vergeben. Bitte kontaktieren Sie die Lehrperson für weitere Möglichkeiten.');
                     return;
                 }
-                
+
                 // Zeige Info wenn Termine bereits zugeteilt wurden
                 if (zugeteilteIds.length > 0) {
                     showInfo(`Es werden nur noch die freien Termine angezeigt (${verfuegbareTermine.length} von ${termine.length} verfügbar).`);
                 }
-                
+
                 displayTermine(verfuegbareTermine);
-                
+
             } catch (error) {
                 console.error('Fehler beim Laden:', error);
                 showError('Fehler beim Laden der Termine: ' + error.message);
@@ -401,12 +404,13 @@
             btn.textContent = 'Wird gesendet...';
 
             try {
-                // DEBUG: Zeige die Daten die gesendet werden
+                // Daten für Firestore vorbereiten
                 const dataToInsert = {
                     termin_gruppe_id: teacherId,
                     kindname: kindname,
                     email: email,
-                    verfuegbare_termine: selectedTermine
+                    verfuegbare_termine: selectedTermine,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
                 console.log('=== DEBUG: Versuche zu senden ===');
@@ -414,28 +418,10 @@
                 console.log('Data:', dataToInsert);
                 console.log('Selected Termine:', selectedTermine);
 
-                // Prüfe ob der User anon ist
-                const { data: sessionData } = await supabase.auth.getSession();
-                console.log('Current session:', sessionData);
-                console.log('Is anon?', !sessionData.session);
-
-                const { data, error } = await supabase
-                    .from('antworten')
-                    .insert([dataToInsert])
-                    .select();
-
-                if (error) {
-                    console.error('=== ERROR Details ===');
-                    console.error('Error code:', error.code);
-                    console.error('Error message:', error.message);
-                    console.error('Error details:', error.details);
-                    console.error('Error hint:', error.hint);
-                    console.error('Full error:', error);
-                    throw error;
-                }
+                // Speichere in Firestore
+                await db.collection('antworten').add(dataToInsert);
 
                 console.log('=== SUCCESS ===');
-                console.log('Inserted data:', data);
 
                 // Zeige Erfolg
                 document.getElementById('form-container').style.display = 'none';

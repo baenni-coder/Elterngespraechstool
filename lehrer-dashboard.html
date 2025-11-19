@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lehrer-Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <style>
         * {
             margin: 0;
@@ -536,37 +539,33 @@
         
         async function createTermin(e) {
             e.preventDefault();
-            
+
             const datum = document.getElementById('termin-datum').value;
             const zeit = document.getElementById('termin-zeit').value;
             const dauer = document.getElementById('termin-dauer').value;
             const btn = document.getElementById('create-btn');
-            
+
             btn.disabled = true;
             btn.textContent = 'Wird erstellt...';
-            
+
             try {
-                const { data, error } = await supabase
-                    .from('termine')
-                    .insert([{
-                        user_id: currentUser.id,
-                        datum: datum,
-                        zeit: zeit,
-                        dauer_minuten: parseInt(dauer),
-                        ist_verfuegbar: true
-                    }])
-                    .select();
-                
-                if (error) throw error;
-                
+                await db.collection('termine').add({
+                    user_id: currentUser.uid,
+                    datum: datum,
+                    zeit: zeit,
+                    dauer_minuten: parseInt(dauer),
+                    ist_verfuegbar: true,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
                 showMessage('termine', '✓ Termin erfolgreich erstellt!', 'success');
-                
+
                 // Formular zurücksetzen
                 document.getElementById('termin-form').reset();
-                
+
                 // Liste neu laden
                 loadTermine();
-                
+
             } catch (error) {
                 showMessage('termine', 'Fehler: ' + error.message, 'error');
             } finally {
@@ -578,20 +577,20 @@
         async function loadTermine() {
             const liste = document.getElementById('termine-liste');
             liste.innerHTML = '<p style="color: #999;">Wird geladen...</p>';
-            
+
             try {
-                const { data, error } = await supabase
-                    .from('termine')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('datum', { ascending: true })
-                    .order('zeit', { ascending: true });
-                
-                if (error) throw error;
-                
-                // Speichere Termine global
-                allTermine = data || [];
-                
+                const snapshot = await db.collection('termine')
+                    .where('user_id', '==', currentUser.uid)
+                    .orderBy('datum', 'asc')
+                    .orderBy('zeit', 'asc')
+                    .get();
+
+                // Speichere Termine global mit ID
+                allTermine = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
                 if (allTermine.length === 0) {
                     liste.innerHTML = `
                         <div class="empty-state">
@@ -603,7 +602,7 @@
                     `;
                     return;
                 }
-                
+
                 liste.innerHTML = allTermine.map(termin => {
                     const datum = new Date(termin.datum);
                     const formattedDate = datum.toLocaleDateString('de-CH', {
@@ -612,7 +611,7 @@
                         month: 'long',
                         day: 'numeric'
                     });
-                    
+
                     return `
                         <div class="termin-card">
                             <div class="info">
@@ -625,7 +624,7 @@
                         </div>
                     `;
                 }).join('');
-                
+
             } catch (error) {
                 liste.innerHTML = `<div class="alert alert-error">Fehler beim Laden: ${error.message}</div>`;
             }
@@ -633,17 +632,11 @@
         
         async function deleteTermin(id) {
             if (!confirm('Termin wirklich löschen?')) return;
-            
+
             try {
-                const { error } = await supabase
-                    .from('termine')
-                    .delete()
-                    .eq('id', id);
-                
-                if (error) throw error;
-                
+                await db.collection('termine').doc(id).delete();
                 loadTermine();
-                
+
             } catch (error) {
                 alert('Fehler beim Löschen: ' + error.message);
             }
@@ -652,11 +645,11 @@
         async function loadAntworten() {
             const liste = document.getElementById('antworten-liste');
             liste.innerHTML = '<p style="color: #999;">Wird geladen...</p>';
-            
+
             try {
                 // Hole nur Antworten die zu meinen AKTUELLEN Terminen gehören
                 const meinTerminIds = allTermine.map(t => t.id);
-                
+
                 if (meinTerminIds.length === 0) {
                     allAntworten = [];
                     document.getElementById('antworten-count').textContent = '0';
@@ -670,25 +663,24 @@
                     `;
                     return;
                 }
-                
+
                 // Hole alle Antworten
-                const { data, error } = await supabase
-                    .from('antworten')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                
+                const snapshot = await db.collection('antworten')
+                    .orderBy('created_at', 'desc')
+                    .get();
+
                 // Filtere nur Antworten die zu aktuellen Terminen gehören
-                const filteredAntworten = (data || []).filter(antwort => {
-                    return antwort.verfuegbare_termine.some(terminId => meinTerminIds.includes(terminId));
-                });
-                
+                const filteredAntworten = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(antwort => {
+                        return antwort.verfuegbare_termine.some(terminId => meinTerminIds.includes(terminId));
+                    });
+
                 // Speichere für Zuteilung
                 allAntworten = filteredAntworten;
-                
+
                 document.getElementById('antworten-count').textContent = allAntworten.length;
-                
+
                 if (allAntworten.length === 0) {
                     liste.innerHTML = `
                         <div class="empty-state">
@@ -700,23 +692,23 @@
                     `;
                     return;
                 }
-                
+
                 liste.innerHTML = allAntworten.map(antwort => {
                     const terminTags = antwort.verfuegbare_termine
                         .filter(terminId => meinTerminIds.includes(terminId)) // Nur aktuelle Termine
                         .map(terminId => {
                             const termin = allTermine.find(t => t.id === terminId);
                             if (!termin) return '';
-                            
+
                             const datum = new Date(termin.datum);
                             const formattedDate = datum.toLocaleDateString('de-CH', {
                                 day: '2-digit',
                                 month: '2-digit'
                             });
-                            
+
                             return `<span class="termin-tag">${formattedDate} ${termin.zeit}</span>`;
                         }).join('');
-                    
+
                     return `
                         <div class="antwort-card">
                             <h4>${antwort.kindname}</h4>
@@ -726,7 +718,7 @@
                         </div>
                     `;
                 }).join('');
-                
+
             } catch (error) {
                 liste.innerHTML = `<div class="alert alert-error">Fehler beim Laden: ${error.message}</div>`;
             }
@@ -747,10 +739,14 @@
             }
             
             // Lade bestehende Zuteilungen
-            const { data: zuteilungen } = await supabase
-                .from('zuteilungen')
-                .select('*')
-                .in('termin_id', allTermine.map(t => t.id)); // Nur für aktuelle Termine
+            const zuteilungenSnapshot = await db.collection('zuteilungen')
+                .where('termin_id', 'in', allTermine.map(t => t.id))
+                .get();
+
+            const zuteilungen = zuteilungenSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
             
             // Setze assignments basierend auf gespeicherten Zuteilungen
             assignments = {};
@@ -850,38 +846,29 @@
 
                 // Schritt 1: Hole existierende Zuteilungen
                 console.log('Schritt 1: Hole existierende Zuteilungen...');
-                const { data: existingZuteilungen, error: fetchError } = await supabase
-                    .from('zuteilungen')
-                    .select('id, termin_id, antwort_id')
-                    .in('termin_id', allTermine.map(t => t.id));
+                const existingZuteilungenSnapshot = await db.collection('zuteilungen')
+                    .where('termin_id', 'in', allTermine.map(t => t.id))
+                    .get();
 
-                if (fetchError) {
-                    console.error('FEHLER beim Abrufen:', fetchError);
-                    throw new Error('Fehler beim Abrufen der Zuteilungen: ' + fetchError.message);
-                }
+                const existingZuteilungen = existingZuteilungenSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
 
                 console.log('Gefundene Zuteilungen:', existingZuteilungen);
 
-                // Schritt 2: Lösche alte Zuteilungen einzeln (wichtig wegen RLS!)
-                if (existingZuteilungen && existingZuteilungen.length > 0) {
+                // Schritt 2: Lösche alte Zuteilungen
+                if (existingZuteilungen.length > 0) {
                     console.log('Schritt 2: Lösche', existingZuteilungen.length, 'alte Zuteilungen...');
 
-                    for (const zuteilung of existingZuteilungen) {
-                        console.log('Lösche Zuteilung:', zuteilung.id);
-                        const { error: deleteError } = await supabase
-                            .from('zuteilungen')
-                            .delete()
-                            .eq('id', zuteilung.id);
+                    const batch = db.batch();
+                    existingZuteilungen.forEach(zuteilung => {
+                        const docRef = db.collection('zuteilungen').doc(zuteilung.id);
+                        batch.delete(docRef);
+                    });
+                    await batch.commit();
 
-                        if (deleteError) {
-                            console.error('FEHLER beim Löschen von', zuteilung.id, ':', deleteError);
-                            throw new Error('Fehler beim Löschen: ' + deleteError.message);
-                        }
-                    }
                     console.log('✓ Alle alten Zuteilungen gelöscht');
-
-                    // Warte kurz
-                    await new Promise(resolve => setTimeout(resolve, 500));
                 } else {
                     console.log('Keine alten Zuteilungen vorhanden');
                 }
@@ -897,36 +884,39 @@
                 console.log('Neue Zuteilungen (zu speichern):', zuteilungenData);
 
                 if (zuteilungenData.length > 0) {
-                    const { data: insertedData, error: insertError } = await supabase
-                        .from('zuteilungen')
-                        .insert(zuteilungenData)
-                        .select();
+                    const batch = db.batch();
+                    zuteilungenData.forEach(zuteilung => {
+                        const docRef = db.collection('zuteilungen').doc();
+                        batch.set(docRef, {
+                            ...zuteilung,
+                            created_at: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    });
+                    await batch.commit();
 
-                    if (insertError) {
-                        console.error('FEHLER beim Einfügen:', insertError);
-                        throw new Error('Fehler beim Speichern: ' + insertError.message);
-                    }
-
-                    console.log('✓ Neue Zuteilungen gespeichert:', insertedData);
+                    console.log('✓ Neue Zuteilungen gespeichert');
                 }
 
                 // Schritt 4: Aktualisiere Verfügbarkeit der Termine
                 console.log('Schritt 4: Aktualisiere Termin-Verfügbarkeit...');
 
-                // Erst alle Termine auf verfügbar setzen
-                await supabase
-                    .from('termine')
-                    .update({ ist_verfuegbar: true })
-                    .eq('user_id', currentUser.id);
+                // Batch für alle Termin-Updates
+                const terminBatch = db.batch();
+
+                // Alle Termine auf verfügbar setzen
+                allTermine.forEach(termin => {
+                    const docRef = db.collection('termine').doc(termin.id);
+                    terminBatch.update(docRef, { ist_verfuegbar: true });
+                });
 
                 // Dann zugeteilte auf nicht verfügbar
                 const zugeteilteTerminIds = Object.values(assignments);
-                if (zugeteilteTerminIds.length > 0) {
-                    await supabase
-                        .from('termine')
-                        .update({ ist_verfuegbar: false })
-                        .in('id', zugeteilteTerminIds);
-                }
+                zugeteilteTerminIds.forEach(terminId => {
+                    const docRef = db.collection('termine').doc(terminId);
+                    terminBatch.update(docRef, { ist_verfuegbar: false });
+                });
+
+                await terminBatch.commit();
 
                 console.log('✓ Verfügbarkeit aktualisiert');
                 console.log('=== SPEICHERVORGANG ERFOLGREICH ===');
@@ -1166,22 +1156,30 @@ END:VEVENT
             
             try {
                 // Lösche alle Zuteilungen
-                await supabase
-                    .from('zuteilungen')
-                    .delete()
-                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Löscht alle
-                
+                const zuteilungenSnapshot = await db.collection('zuteilungen').get();
+                const batch1 = db.batch();
+                zuteilungenSnapshot.docs.forEach(doc => {
+                    batch1.delete(doc.ref);
+                });
+                await batch1.commit();
+
                 // Lösche alle Antworten
-                await supabase
-                    .from('antworten')
-                    .delete()
-                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Löscht alle
-                
+                const antwortenSnapshot = await db.collection('antworten').get();
+                const batch2 = db.batch();
+                antwortenSnapshot.docs.forEach(doc => {
+                    batch2.delete(doc.ref);
+                });
+                await batch2.commit();
+
                 // Setze alle Termine wieder auf verfügbar
-                await supabase
-                    .from('termine')
-                    .update({ ist_verfuegbar: true })
-                    .eq('user_id', currentUser.id);
+                const termineSnapshot = await db.collection('termine')
+                    .where('user_id', '==', currentUser.uid)
+                    .get();
+                const batch3 = db.batch();
+                termineSnapshot.docs.forEach(doc => {
+                    batch3.update(doc.ref, { ist_verfuegbar: true });
+                });
+                await batch3.commit();
                 
                 showMessage('verwaltung', '✓ Erfolgreich! Alle Antworten und Zuteilungen wurden gelöscht. Ihre Termine sind wieder verfügbar.', 'success');
                 
@@ -1222,21 +1220,29 @@ END:VEVENT
             }
             
             try {
-                // Lösche in der richtigen Reihenfolge (wegen Foreign Keys)
-                await supabase
-                    .from('zuteilungen')
-                    .delete()
-                    .neq('id', '00000000-0000-0000-0000-000000000000');
-                
-                await supabase
-                    .from('antworten')
-                    .delete()
-                    .neq('id', '00000000-0000-0000-0000-000000000000');
-                
-                await supabase
-                    .from('termine')
-                    .delete()
-                    .eq('user_id', currentUser.id);
+                // Lösche in der richtigen Reihenfolge
+                const zuteilungenSnapshot = await db.collection('zuteilungen').get();
+                const batch1 = db.batch();
+                zuteilungenSnapshot.docs.forEach(doc => {
+                    batch1.delete(doc.ref);
+                });
+                await batch1.commit();
+
+                const antwortenSnapshot = await db.collection('antworten').get();
+                const batch2 = db.batch();
+                antwortenSnapshot.docs.forEach(doc => {
+                    batch2.delete(doc.ref);
+                });
+                await batch2.commit();
+
+                const termineSnapshot = await db.collection('termine')
+                    .where('user_id', '==', currentUser.uid)
+                    .get();
+                const batch3 = db.batch();
+                termineSnapshot.docs.forEach(doc => {
+                    batch3.delete(doc.ref);
+                });
+                await batch3.commit();
                 
                 showMessage('verwaltung', '✓ Erfolgreich! Alle Daten wurden gelöscht. Sie können jetzt von vorne beginnen.', 'success');
                 
