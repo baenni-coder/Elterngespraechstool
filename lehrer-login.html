@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lehrer Login</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <style>
         * {
             margin: 0;
@@ -258,12 +261,7 @@
             btn.textContent = 'Wird angemeldet...';
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
-                if (error) throw error;
+                await auth.signInWithEmailAndPassword(email, password);
 
                 showMessage('✓ Erfolgreich angemeldet! Sie werden weitergeleitet...', 'success');
 
@@ -290,23 +288,20 @@
             btn.textContent = 'Konto wird erstellt...';
 
             try {
-                const { data, error } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            name: name
-                        }
-                    }
-                });
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
 
-                if (error) throw error;
+                // Optional: Name als Display Name setzen
+                if (name) {
+                    await userCredential.user.updateProfile({
+                        displayName: name
+                    });
+                }
 
-                showMessage('✓ Konto erfolgreich erstellt! Bitte prüfen Sie Ihr E-Mail-Postfach für die Bestätigung.', 'success');
+                showMessage('✓ Konto erfolgreich erstellt! Sie können sich jetzt anmelden.', 'success');
 
                 setTimeout(() => {
                     showLogin();
-                }, 3000);
+                }, 2000);
 
             } catch (error) {
                 showMessage('Fehler bei der Registrierung: ' + error.message, 'error');

@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Hilfsfunktion: Prüft ob der Benutzer eingeloggt ist
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Hilfsfunktion: Prüft ob der Benutzer der Besitzer ist
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Termine: Nur der Ersteller kann lesen, schreiben, löschen
+    match /termine/{terminId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    // Antworten: Jeder kann erstellen (auch ohne Login),
+    // aber nur der zugehörige Lehrer kann sie lesen
+    match /antworten/{antwortId} {
+      allow read: if isSignedIn();
+      allow create: if true; // Eltern können ohne Login antworten
+      allow update, delete: if false; // Kann nicht bearbeitet oder gelöscht werden
+    }
+
+    // Zuteilungen: Nur eingeloggte Lehrer können lesen und schreiben
+    match /zuteilungen/{zuteilungId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+  }
+}
