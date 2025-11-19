@@ -900,23 +900,22 @@
                 // Schritt 4: Aktualisiere Verfügbarkeit der Termine
                 console.log('Schritt 4: Aktualisiere Termin-Verfügbarkeit...');
 
-                // Batch für alle Termin-Updates
-                const terminBatch = db.batch();
+                if (allTermine.length > 0) {
+                    // Batch für alle Termin-Updates
+                    const terminBatch = db.batch();
 
-                // Alle Termine auf verfügbar setzen
-                allTermine.forEach(termin => {
-                    const docRef = db.collection('termine').doc(termin.id);
-                    terminBatch.update(docRef, { ist_verfuegbar: true });
-                });
+                    // Zugeteilte Termin-IDs sammeln
+                    const zugeteilteTerminIds = new Set(Object.values(assignments));
 
-                // Dann zugeteilte auf nicht verfügbar
-                const zugeteilteTerminIds = Object.values(assignments);
-                zugeteilteTerminIds.forEach(terminId => {
-                    const docRef = db.collection('termine').doc(terminId);
-                    terminBatch.update(docRef, { ist_verfuegbar: false });
-                });
+                    // Aktualisiere jeden Termin basierend auf Zuteilungsstatus
+                    allTermine.forEach(termin => {
+                        const docRef = db.collection('termine').doc(termin.id);
+                        const istZugeteilt = zugeteilteTerminIds.has(termin.id);
+                        terminBatch.update(docRef, { ist_verfuegbar: !istZugeteilt });
+                    });
 
-                await terminBatch.commit();
+                    await terminBatch.commit();
+                }
 
                 console.log('✓ Verfügbarkeit aktualisiert');
                 console.log('=== SPEICHERVORGANG ERFOLGREICH ===');
@@ -1157,29 +1156,35 @@ END:VEVENT
             try {
                 // Lösche alle Zuteilungen
                 const zuteilungenSnapshot = await db.collection('zuteilungen').get();
-                const batch1 = db.batch();
-                zuteilungenSnapshot.docs.forEach(doc => {
-                    batch1.delete(doc.ref);
-                });
-                await batch1.commit();
+                if (zuteilungenSnapshot.docs.length > 0) {
+                    const batch1 = db.batch();
+                    zuteilungenSnapshot.docs.forEach(doc => {
+                        batch1.delete(doc.ref);
+                    });
+                    await batch1.commit();
+                }
 
                 // Lösche alle Antworten
                 const antwortenSnapshot = await db.collection('antworten').get();
-                const batch2 = db.batch();
-                antwortenSnapshot.docs.forEach(doc => {
-                    batch2.delete(doc.ref);
-                });
-                await batch2.commit();
+                if (antwortenSnapshot.docs.length > 0) {
+                    const batch2 = db.batch();
+                    antwortenSnapshot.docs.forEach(doc => {
+                        batch2.delete(doc.ref);
+                    });
+                    await batch2.commit();
+                }
 
                 // Setze alle Termine wieder auf verfügbar
                 const termineSnapshot = await db.collection('termine')
                     .where('user_id', '==', currentUser.uid)
                     .get();
-                const batch3 = db.batch();
-                termineSnapshot.docs.forEach(doc => {
-                    batch3.update(doc.ref, { ist_verfuegbar: true });
-                });
-                await batch3.commit();
+                if (termineSnapshot.docs.length > 0) {
+                    const batch3 = db.batch();
+                    termineSnapshot.docs.forEach(doc => {
+                        batch3.update(doc.ref, { ist_verfuegbar: true });
+                    });
+                    await batch3.commit();
+                }
                 
                 showMessage('verwaltung', '✓ Erfolgreich! Alle Antworten und Zuteilungen wurden gelöscht. Ihre Termine sind wieder verfügbar.', 'success');
                 
@@ -1222,27 +1227,33 @@ END:VEVENT
             try {
                 // Lösche in der richtigen Reihenfolge
                 const zuteilungenSnapshot = await db.collection('zuteilungen').get();
-                const batch1 = db.batch();
-                zuteilungenSnapshot.docs.forEach(doc => {
-                    batch1.delete(doc.ref);
-                });
-                await batch1.commit();
+                if (zuteilungenSnapshot.docs.length > 0) {
+                    const batch1 = db.batch();
+                    zuteilungenSnapshot.docs.forEach(doc => {
+                        batch1.delete(doc.ref);
+                    });
+                    await batch1.commit();
+                }
 
                 const antwortenSnapshot = await db.collection('antworten').get();
-                const batch2 = db.batch();
-                antwortenSnapshot.docs.forEach(doc => {
-                    batch2.delete(doc.ref);
-                });
-                await batch2.commit();
+                if (antwortenSnapshot.docs.length > 0) {
+                    const batch2 = db.batch();
+                    antwortenSnapshot.docs.forEach(doc => {
+                        batch2.delete(doc.ref);
+                    });
+                    await batch2.commit();
+                }
 
                 const termineSnapshot = await db.collection('termine')
                     .where('user_id', '==', currentUser.uid)
                     .get();
-                const batch3 = db.batch();
-                termineSnapshot.docs.forEach(doc => {
-                    batch3.delete(doc.ref);
-                });
-                await batch3.commit();
+                if (termineSnapshot.docs.length > 0) {
+                    const batch3 = db.batch();
+                    termineSnapshot.docs.forEach(doc => {
+                        batch3.delete(doc.ref);
+                    });
+                    await batch3.commit();
+                }
                 
                 showMessage('verwaltung', '✓ Erfolgreich! Alle Daten wurden gelöscht. Sie können jetzt von vorne beginnen.', 'success');
                 
