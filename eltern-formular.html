@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elterngespräch - Terminwahl</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.95;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .checkbox-item:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            margin-right: 14px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+        
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .checkbox-item.checked {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .checkbox-item.checked label {
+            color: white;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        #loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-icon {
+            text-align: center;
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        #success-message {
+            display: none;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 25px;
+        }
+        
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Elterngespräch</h1>
+            <p>Bitte wählen Sie Ihre verfügbaren Termine</p>
+        </div>
+        
+        <div class="content">
+            <div id="loading">
+                <div class="spinner"></div>
+                <p>Termine werden geladen...</p>
+            </div>
+            
+            <div id="form-container" style="display: none;">
+                <div id="message"></div>
+                
+                <form id="eltern-form" onsubmit="submitForm(event)">
+                    <div class="form-group">
+                        <label>Name Ihres Kindes *</label>
+                        <input type="text" id="kindname" required placeholder="z.B. Max Muster">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Ihre E-Mail-Adresse *</label>
+                        <input type="email" id="email" required placeholder="ihre.email@beispiel.ch">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span></label>
+                        <div class="checkbox-group" id="termine-list"></div>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="submit-btn">Verfügbarkeit absenden</button>
+                </form>
+            </div>
+            
+            <div id="success-message">
+                <div class="success-icon">✅</div>
+                <div class="alert alert-success">
+                    <strong>Vielen Dank!</strong><br>
+                    Ihre Verfügbarkeit wurde erfolgreich übermittelt.<br><br>
+                    Sie erhalten eine Bestätigung per E-Mail, sobald die Lehrperson die Termine zugeteilt hat.
+                </div>
+            </div>
+            
+            <div class="back-link">
+                <a href="index.html">← Zurück zur Startseite</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let teacherId = null;
+        let verfuegbareTermine = [];
+        
+        // Beim Laden: Lehrer-ID aus URL holen und Termine laden
+        window.onload = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            teacherId = urlParams.get('teacher');
+            
+            if (!teacherId) {
+                showError('Ungültiger Link. Bitte verwenden Sie den Link, den Sie von der Lehrperson erhalten haben.');
+                return;
+            }
+            
+            await loadTermine();
+        };
+        
+        async function loadTermine() {
+            try {
+                // Hole alle verfügbaren Termine dieser Lehrperson
+                const { data: termine, error: termineError } = await supabase
+                    .from('termine')
+                    .select('*')
+                    .eq('user_id', teacherId)
+                    .eq('ist_verfuegbar', true)
+                    .order('datum', { ascending: true })
+                    .order('zeit', { ascending: true });
+                
+                if (termineError) throw termineError;
+                
+                if (!termine || termine.length === 0) {
+                    showError('Aktuell sind keine Termine verfügbar. Bitte kontaktieren Sie die Lehrperson.');
+                    return;
+                }
+                
+                // Hole bereits zugeteilte Termine
+                const { data: zuteilungen, error: zuteilungenError } = await supabase
+                    .from('zuteilungen')
+                    .select('termin_id')
+                    .in('termin_id', termine.map(t => t.id));
+                
+                if (zuteilungenError) throw zuteilungenError;
+                
+                // Filtere bereits zugeteilte Termine raus
+                const zugeteilteIds = zuteilungen ? zuteilungen.map(z => z.termin_id) : [];
+                verfuegbareTermine = termine.filter(t => !zugeteilteIds.includes(t.id));
+                
+                if (verfuegbareTermine.length === 0) {
+                    showWarning('Alle Termine sind bereits vergeben. Bitte kontaktieren Sie die Lehrperson für weitere Möglichkeiten.');
+                    return;
+                }
+                
+                // Zeige Info wenn Termine bereits zugeteilt wurden
+                if (zugeteilteIds.length > 0) {
+                    showInfo(`Es werden nur noch die freien Termine angezeigt (${verfuegbareTermine.length} von ${termine.length} verfügbar).`);
+                }
+                
+                displayTermine(verfuegbareTermine);
+                
+            } catch (error) {
+                console.error('Fehler beim Laden:', error);
+                showError('Fehler beim Laden der Termine: ' + error.message);
+            }
+        }
+        
+        function displayTermine(termine) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('form-container').style.display = 'block';
+            
+            const termineList = document.getElementById('termine-list');
+            termineList.innerHTML = '';
+            
+            termine.forEach(termin => {
+                const datum = new Date(termin.datum);
+                const formattedDate = datum.toLocaleDateString('de-CH', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="termin-${termin.id}" value="${termin.id}">
+                    <label for="termin-${termin.id}">${formattedDate}, ${termin.zeit} Uhr (${termin.dauer_minuten} Min.)</label>
+                `;
+                
+                // Toggle checked class beim Klicken
+                div.onclick = function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                    }
+                    this.classList.toggle('checked');
+                };
+                
+                termineList.appendChild(div);
+            });
+        }
+        
+        async function submitForm(e) {
+            e.preventDefault();
+
+            const kindname = document.getElementById('kindname').value.trim();
+            const email = document.getElementById('email').value.trim();
+
+            const selectedTermine = [];
+            document.querySelectorAll('#termine-list input[type="checkbox"]:checked').forEach(cb => {
+                selectedTermine.push(cb.value);
+            });
+
+            if (selectedTermine.length === 0) {
+                showError('Bitte wählen Sie mindestens einen Termin aus.');
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.textContent = 'Wird gesendet...';
+
+            try {
+                // DEBUG: Zeige die Daten die gesendet werden
+                const dataToInsert = {
+                    termin_gruppe_id: teacherId,
+                    kindname: kindname,
+                    email: email,
+                    verfuegbare_termine: selectedTermine
+                };
+
+                console.log('=== DEBUG: Versuche zu senden ===');
+                console.log('teacherId:', teacherId);
+                console.log('Data:', dataToInsert);
+                console.log('Selected Termine:', selectedTermine);
+
+                // Prüfe ob der User anon ist
+                const { data: sessionData } = await supabase.auth.getSession();
+                console.log('Current session:', sessionData);
+                console.log('Is anon?', !sessionData.session);
+
+                const { data, error } = await supabase
+                    .from('antworten')
+                    .insert([dataToInsert])
+                    .select();
+
+                if (error) {
+                    console.error('=== ERROR Details ===');
+                    console.error('Error code:', error.code);
+                    console.error('Error message:', error.message);
+                    console.error('Error details:', error.details);
+                    console.error('Error hint:', error.hint);
+                    console.error('Full error:', error);
+                    throw error;
+                }
+
+                console.log('=== SUCCESS ===');
+                console.log('Inserted data:', data);
+
+                // Zeige Erfolg
+                document.getElementById('form-container').style.display = 'none';
+                document.getElementById('success-message').style.display = 'block';
+
+            } catch (error) {
+                console.error('=== CATCH ERROR ===');
+                console.error('Caught error:', error);
+                showError('Fehler beim Senden: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = 'Verfügbarkeit absenden';
+            }
+        }
+        
+        function showError(text) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('message').innerHTML = `<div class="alert alert-error"><strong>Fehler:</strong> ${text}</div>`;
+        }
+        
+        function showWarning(text) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('message').innerHTML = `<div class="alert alert-warning">${text}</div>`;
+        }
+        
+        function showInfo(text) {
+            document.getElementById('message').innerHTML = `<div class="alert alert-info">${text}</div>`;
+        }
+    </script>
+</body>
+</html>
