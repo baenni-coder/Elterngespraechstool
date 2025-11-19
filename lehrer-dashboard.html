@@ -513,7 +513,7 @@
             
             // Share-URL setzen
             const baseUrl = window.location.origin + window.location.pathname.replace('lehrer-dashboard.html', '');
-            const shareUrl = baseUrl + 'eltern-formular.html?teacher=' + currentUser.id;
+            const shareUrl = baseUrl + 'eltern-formular.html?teacher=' + currentUser.uid;
             document.getElementById('share-url').value = shareUrl;
             
             // Daten laden
