@@ -839,31 +839,65 @@
                     return;
                 }
 
-                liste.innerHTML = allAntworten.map(antwort => {
-                    const terminTags = antwort.verfuegbare_termine
-                        .filter(terminId => meinTerminIds.includes(terminId)) // Nur aktuelle Termine
-                        .map(terminId => {
-                            const termin = allTermine.find(t => t.id === terminId);
-                            if (!termin) return '';
+                // Gruppiere Antworten nach Kindname
+                const gruppierteAntworten = {};
+                allAntworten.forEach(antwort => {
+                    const kindname = antwort.kindname;
+                    if (!gruppierteAntworten[kindname]) {
+                        gruppierteAntworten[kindname] = [];
+                    }
+                    gruppierteAntworten[kindname].push(antwort);
+                });
 
-                            const datum = new Date(termin.datum);
-                            const formattedDate = datum.toLocaleDateString('de-CH', {
-                                day: '2-digit',
-                                month: '2-digit'
-                            });
+                // Erstelle HTML für gruppierte Antworten
+                let html = '';
+                Object.keys(gruppierteAntworten).sort().forEach(kindname => {
+                    const antworten = gruppierteAntworten[kindname];
 
-                            return `<span class="termin-tag">${formattedDate} ${termin.zeit}</span>`;
-                        }).join('');
+                    // Berechne gemeinsame Termine wenn mehrere Eltern geantwortet haben
+                    let gemeinsameTermine = [];
+                    if (antworten.length > 1) {
+                        // Schnittmenge berechnen
+                        gemeinsameTermine = antworten[0].verfuegbare_termine.filter(terminId =>
+                            antworten.every(a => a.verfuegbare_termine.includes(terminId)) &&
+                            meinTerminIds.includes(terminId)
+                        );
+                    } else {
+                        gemeinsameTermine = antworten[0].verfuegbare_termine.filter(terminId =>
+                            meinTerminIds.includes(terminId)
+                        );
+                    }
 
-                    return `
+                    // E-Mail-Adressen sammeln
+                    const emails = antworten.map(a => a.email).join(', ');
+
+                    // Termin-Tags erstellen
+                    const terminTags = gemeinsameTermine.map(terminId => {
+                        const termin = allTermine.find(t => t.id === terminId);
+                        if (!termin) return '';
+
+                        const datum = new Date(termin.datum);
+                        const formattedDate = datum.toLocaleDateString('de-CH', {
+                            day: '2-digit',
+                            month: '2-digit'
+                        });
+
+                        return `<span class="termin-tag">${formattedDate} ${termin.zeit}</span>`;
+                    }).join('');
+
+                    html += `
                         <div class="antwort-card">
-                            <h4>${antwort.kindname}</h4>
-                            <p><strong>E-Mail:</strong> ${antwort.email}</p>
-                            <p><strong>Verfügbare Termine:</strong></p>
+                            <h4>${kindname}</h4>
+                            ${antworten.length > 1 ? `<p style="color: #2ecc71; font-weight: 600;">✓ ${antworten.length} Elternteile haben geantwortet</p>` : ''}
+                            <p><strong>E-Mail${antworten.length > 1 ? 's' : ''}:</strong> ${emails}</p>
+                            <p><strong>${antworten.length > 1 ? 'Gemeinsame verfügbare Termine:' : 'Verfügbare Termine:'}</strong></p>
                             <div class="termine-tags">${terminTags || '<span style="color: #999;">Keine passenden Termine</span>'}</div>
+                            ${antworten.length > 1 ? `<p style="color: #666; font-size: 13px; margin-top: 10px;">💡 Es werden nur die Termine angezeigt, die von allen Elternteilen gewählt wurden.</p>` : ''}
                         </div>
                     `;
-                }).join('');
+                });
+
+                liste.innerHTML = html;
 
             } catch (error) {
                 liste.innerHTML = `<div class="alert alert-error">Fehler beim Laden: ${error.message}</div>`;
@@ -873,7 +907,7 @@
         async function loadZuteilungsView() {
             const area = document.getElementById('zuteilungs-area');
             area.innerHTML = '<p style="color: #999;">Wird geladen...</p>';
-            
+
             if (allTermine.length === 0 || allAntworten.length === 0) {
                 area.innerHTML = `
                     <div class="alert alert-warning">
@@ -883,7 +917,41 @@
                 `;
                 return;
             }
-            
+
+            // Gruppiere Antworten nach Kindname mit gemeinsamen Terminen
+            const kinderGruppen = {};
+            const meinTerminIds = allTermine.map(t => t.id);
+
+            allAntworten.forEach(antwort => {
+                const kindname = antwort.kindname;
+                if (!kinderGruppen[kindname]) {
+                    kinderGruppen[kindname] = {
+                        antworten: [],
+                        gemeinsameTermine: []
+                    };
+                }
+                kinderGruppen[kindname].antworten.push(antwort);
+            });
+
+            // Berechne gemeinsame Termine für jede Gruppe
+            Object.keys(kinderGruppen).forEach(kindname => {
+                const gruppe = kinderGruppen[kindname];
+                if (gruppe.antworten.length > 1) {
+                    // Schnittmenge berechnen
+                    gruppe.gemeinsameTermine = gruppe.antworten[0].verfuegbare_termine.filter(terminId =>
+                        gruppe.antworten.every(a => a.verfuegbare_termine.includes(terminId)) &&
+                        meinTerminIds.includes(terminId)
+                    );
+                } else {
+                    // Nur eine Antwort: alle Termine
+                    gruppe.gemeinsameTermine = gruppe.antworten[0].verfuegbare_termine.filter(terminId =>
+                        meinTerminIds.includes(terminId)
+                    );
+                }
+            });
+
+            window.kinderGruppen = kinderGruppen; // Speichere global für renderZuteilungsArea
+
             // Lade bestehende Zuteilungen
             const zuteilungenSnapshot = await db.collection('zuteilungen')
                 .where('termin_id', 'in', allTermine.map(t => t.id))
@@ -893,26 +961,28 @@
                 id: doc.id,
                 ...doc.data()
             }));
-            
-            // Setze assignments basierend auf gespeicherten Zuteilungen
+
+            // Setze assignments basierend auf gespeicherten Zuteilungen (jetzt nach Kindname)
             assignments = {};
-            if (zuteilungen) {
+            if (zuteilungen.length > 0) {
                 zuteilungen.forEach(z => {
-                    // Prüfe ob die Antwort noch in unserer aktuellen Liste ist
                     const antwort = allAntworten.find(a => a.id === z.antwort_id);
                     if (antwort) {
-                        assignments[z.antwort_id] = z.termin_id;
+                        // Speichere nach Kindname statt antwort_id
+                        assignments[antwort.kindname] = z.termin_id;
                     }
                 });
             }
-            
+
             renderZuteilungsArea();
         }
         
         function renderZuteilungsArea() {
             const area = document.getElementById('zuteilungs-area');
             area.innerHTML = '';
-            
+
+            if (!window.kinderGruppen) return;
+
             allTermine.forEach(termin => {
                 const datum = new Date(termin.datum);
                 const formattedDate = datum.toLocaleDateString('de-CH', {
@@ -921,53 +991,63 @@
                     month: 'long',
                     day: 'numeric'
                 });
-                
+
                 const slotDiv = document.createElement('div');
                 slotDiv.className = 'zuteilung-slot';
                 slotDiv.innerHTML = `
                     <h3>${formattedDate}, ${termin.zeit} Uhr (${termin.dauer_minuten} Min.)</h3>
                     <div id="eltern-${termin.id}"></div>
                 `;
-                
+
                 area.appendChild(slotDiv);
-                
+
                 const elternDiv = document.getElementById('eltern-' + termin.id);
                 let hasOptions = false;
-                
-                allAntworten.forEach(antwort => {
-                    if (antwort.verfuegbare_termine.includes(termin.id)) {
+
+                // Iteriere über Kinder-Gruppen statt einzelne Antworten
+                Object.keys(window.kinderGruppen).sort().forEach(kindname => {
+                    const gruppe = window.kinderGruppen[kindname];
+
+                    // Prüfe ob dieser Termin in den gemeinsamen Terminen ist
+                    if (gruppe.gemeinsameTermine.includes(termin.id)) {
                         hasOptions = true;
-                        
-                        const isAssignedElsewhere = assignments[antwort.id] && assignments[antwort.id] !== termin.id;
-                        const isSelected = assignments[antwort.id] === termin.id;
-                        
+
+                        const isAssignedElsewhere = assignments[kindname] && assignments[kindname] !== termin.id;
+                        const isSelected = assignments[kindname] === termin.id;
+
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'eltern-option';
                         if (isSelected) optionDiv.classList.add('selected');
                         if (isAssignedElsewhere) optionDiv.classList.add('grayed-out');
-                        
+
+                        // Zeige E-Mail-Adressen (bei mehreren Eltern)
+                        const emails = gruppe.antworten.map(a => a.email).join(', ');
+                        const elternInfo = gruppe.antworten.length > 1
+                            ? `${kindname} (${gruppe.antworten.length} Elternteile: ${emails})`
+                            : `${kindname} (${emails})`;
+
                         optionDiv.innerHTML = `
-                            <input type="radio" name="antwort-${antwort.id}" value="${termin.id}" ${isSelected ? 'checked' : ''} ${isAssignedElsewhere ? 'disabled' : ''}>
-                            <label>${antwort.kindname} (${antwort.email})</label>
+                            <input type="radio" name="kind-${kindname}" value="${termin.id}" ${isSelected ? 'checked' : ''} ${isAssignedElsewhere ? 'disabled' : ''}>
+                            <label>${elternInfo}</label>
                         `;
-                        
+
                         optionDiv.onclick = function(e) {
                             if (!isAssignedElsewhere && !this.classList.contains('grayed-out')) {
                                 if (isSelected) {
                                     // Zuteilung aufheben
-                                    delete assignments[antwort.id];
+                                    delete assignments[kindname];
                                 } else {
                                     // Neue Zuteilung
-                                    assignments[antwort.id] = termin.id;
+                                    assignments[kindname] = termin.id;
                                 }
                                 renderZuteilungsArea();
                             }
                         };
-                        
+
                         elternDiv.appendChild(optionDiv);
                     }
                 });
-                
+
                 if (!hasOptions) {
                     elternDiv.innerHTML = '<p style="color: #999; font-style: italic;">Keine Eltern für diesen Termin verfügbar</p>';
                 }
@@ -1019,13 +1099,25 @@
                     console.log('Keine alten Zuteilungen vorhanden');
                 }
 
-                // Schritt 3: Erstelle neue Zuteilungen
+                // Schritt 3: Erstelle neue Zuteilungen (für alle Antworten in jeder Gruppe)
                 console.log('Schritt 3: Erstelle neue Zuteilungen...');
-                const zuteilungenData = Object.entries(assignments).map(([antwortId, terminId]) => ({
-                    termin_id: terminId,
-                    antwort_id: antwortId,
-                    status: 'zugeteilt'
-                }));
+                const zuteilungenData = [];
+
+                // assignments enthält jetzt: { kindname: terminId }
+                // Wir müssen für jede Antwort in der Gruppe eine Zuteilung erstellen
+                Object.entries(assignments).forEach(([kindname, terminId]) => {
+                    const gruppe = window.kinderGruppen[kindname];
+                    if (gruppe) {
+                        // Erstelle für jede Antwort in der Gruppe eine Zuteilung
+                        gruppe.antworten.forEach(antwort => {
+                            zuteilungenData.push({
+                                termin_id: terminId,
+                                antwort_id: antwort.id,
+                                status: 'zugeteilt'
+                            });
+                        });
+                    }
+                });
 
                 console.log('Neue Zuteilungen (zu speichern):', zuteilungenData);
 
@@ -1109,12 +1201,12 @@
                 let successCount = 0;
                 let errorCount = 0;
 
-                // Sende E-Mail für jede Zuteilung
-                for (const [antwortId, terminId] of Object.entries(assignments)) {
-                    const antwort = allAntworten.find(a => a.id === antwortId);
+                // Sende E-Mail für jede Zuteilung (assignments enthält jetzt kindname -> terminId)
+                for (const [kindname, terminId] of Object.entries(assignments)) {
+                    const gruppe = window.kinderGruppen[kindname];
                     const termin = allTermine.find(t => t.id === terminId);
 
-                    if (!antwort || !termin) continue;
+                    if (!gruppe || !termin) continue;
 
                     const datum = new Date(termin.datum);
                     const formattedDate = datum.toLocaleDateString('de-CH', {
@@ -1124,27 +1216,30 @@
                         day: 'numeric'
                     });
 
-                    // Template Parameter für EmailJS
-                    const templateParams = {
-                        to_email: antwort.email,
-                        to_name: antwort.kindname,
-                        termin_datum: formattedDate,
-                        termin_zeit: termin.zeit,
-                        termin_dauer: termin.dauer_minuten,
-                        lehrer_email: currentUser.email
-                    };
+                    // Sende E-Mail an jedes Elternteil in der Gruppe
+                    for (const antwort of gruppe.antworten) {
+                        // Template Parameter für EmailJS
+                        const templateParams = {
+                            to_email: antwort.email,
+                            to_name: antwort.kindname,
+                            termin_datum: formattedDate,
+                            termin_zeit: termin.zeit,
+                            termin_dauer: termin.dauer_minuten,
+                            lehrer_email: currentUser.email
+                        };
 
-                    try {
-                        await emailjs.send(emailjs_service_id, emailjs_template_id, templateParams);
-                        successCount++;
-                        console.log(`✓ E-Mail gesendet an ${antwort.email}`);
-                    } catch (error) {
-                        errorCount++;
-                        console.error(`✗ Fehler beim Senden an ${antwort.email}:`, error);
+                        try {
+                            await emailjs.send(emailjs_service_id, emailjs_template_id, templateParams);
+                            successCount++;
+                            console.log(`✓ E-Mail gesendet an ${antwort.email}`);
+                        } catch (error) {
+                            errorCount++;
+                            console.error(`✗ Fehler beim Senden an ${antwort.email}:`, error);
+                        }
+
+                        // Kleine Pause zwischen E-Mails (EmailJS Rate Limit)
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
-
-                    // Kleine Pause zwischen E-Mails (EmailJS Rate Limit)
-                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
                 return { enabled: true, success: successCount, error: errorCount };
