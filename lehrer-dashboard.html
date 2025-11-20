@@ -1274,14 +1274,14 @@
             html += '<div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 20px;">';
             html += '<h3 style="margin-bottom: 15px; color: #667eea;">📧 E-Mail-Benachrichtigungen</h3>';
             html += '<p style="color: #666; margin-bottom: 20px;">Kopieren Sie die E-Mail-Texte und senden Sie sie an die Eltern:</p>';
-            
-            // Für jeden zugeteilten Termin
-            Object.keys(assignments).forEach(antwortId => {
-                const antwort = allAntworten.find(a => a.id === antwortId);
-                const termin = allTermine.find(t => t.id === assignments[antwortId]);
-                
-                if (!antwort || !termin) return;
-                
+
+            // Für jeden zugeteilten Termin (assignments enthält jetzt kindname -> terminId)
+            Object.keys(assignments).forEach(kindname => {
+                const gruppe = window.kinderGruppen[kindname];
+                const termin = allTermine.find(t => t.id === assignments[kindname]);
+
+                if (!gruppe || !termin) return;
+
                 const datum = new Date(termin.datum);
                 const formattedDate = datum.toLocaleDateString('de-CH', {
                     weekday: 'long',
@@ -1289,8 +1289,10 @@
                     month: 'long',
                     year: 'numeric'
                 });
-                
-                const emailText = `Guten Tag
+
+                // Erstelle für jedes Elternteil in der Gruppe eine E-Mail-Vorlage
+                gruppe.antworten.forEach(antwort => {
+                    const emailText = `Guten Tag
 
 Hiermit bestätige ich den Termin für unser Elterngespräch:
 
@@ -1302,18 +1304,19 @@ Dauer: ${termin.dauer_minuten} Minuten
 Ich freue mich auf unser Gespräch.
 
 Mit freundlichen Grüssen`;
-                
-                html += `
-                    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0;">
-                        <h4 style="color: #667eea; margin-bottom: 10px;">${antwort.kindname}</h4>
-                        <p style="margin-bottom: 10px;"><strong>An:</strong> ${antwort.email}</p>
-                        <textarea readonly style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 13px; margin-bottom: 10px;">${emailText}</textarea>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-primary btn-small" onclick="copyEmailText(this)">📋 E-Mail-Text kopieren</button>
-                            <button class="btn btn-primary btn-small" onclick="downloadICS('${antwortId}', '${termin.id}')">📅 Kalender-Datei (.ics)</button>
+
+                    html += `
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0;">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">${antwort.kindname}</h4>
+                            <p style="margin-bottom: 10px;"><strong>An:</strong> ${antwort.email}</p>
+                            <textarea readonly style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 13px; margin-bottom: 10px;">${emailText}</textarea>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-primary btn-small" onclick="copyEmailText(this)">📋 E-Mail-Text kopieren</button>
+                                <button class="btn btn-primary btn-small" onclick="downloadICS('${antwort.id}', '${termin.id}')">📅 Kalender-Datei (.ics)</button>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
             });
             
             html += '</div>';
@@ -1378,19 +1381,23 @@ METHOD:PUBLISH
 X-WR-CALNAME:Elterngespräche
 X-WR-TIMEZONE:Europe/Zurich
 `;
-            
-            Object.keys(assignments).forEach(antwortId => {
-                const antwort = allAntworten.find(a => a.id === antwortId);
-                const termin = allTermine.find(t => t.id === assignments[antwortId]);
-                
-                if (!antwort || !termin) return;
-                
-                const event = generateICSEvent(termin, antwort);
-                icsContent += event;
+
+            // Iteriere über kinderGruppen statt assignments
+            Object.keys(assignments).forEach(kindname => {
+                const gruppe = window.kinderGruppen[kindname];
+                const termin = allTermine.find(t => t.id === assignments[kindname]);
+
+                if (!gruppe || !termin) return;
+
+                // Erstelle Event für jedes Elternteil in der Gruppe
+                gruppe.antworten.forEach(antwort => {
+                    const event = generateICSEvent(termin, antwort);
+                    icsContent += event;
+                });
             });
-            
+
             icsContent += 'END:VCALENDAR';
-            
+
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -1438,19 +1445,23 @@ END:VEVENT
         
         function downloadCSV() {
             let csv = 'Kindname,Email,Datum,Uhrzeit,Dauer\n';
-            
-            Object.keys(assignments).forEach(antwortId => {
-                const antwort = allAntworten.find(a => a.id === antwortId);
-                const termin = allTermine.find(t => t.id === assignments[antwortId]);
-                
-                if (!antwort || !termin) return;
-                
+
+            // Iteriere über kinderGruppen statt assignments
+            Object.keys(assignments).forEach(kindname => {
+                const gruppe = window.kinderGruppen[kindname];
+                const termin = allTermine.find(t => t.id === assignments[kindname]);
+
+                if (!gruppe || !termin) return;
+
                 const datum = new Date(termin.datum);
                 const formattedDate = datum.toLocaleDateString('de-CH');
-                
-                csv += `"${antwort.kindname}","${antwort.email}","${formattedDate}","${termin.zeit}","${termin.dauer_minuten} Min."\n`;
+
+                // Erstelle Zeile für jedes Elternteil in der Gruppe
+                gruppe.antworten.forEach(antwort => {
+                    csv += `"${antwort.kindname}","${antwort.email}","${formattedDate}","${termin.zeit}","${termin.dauer_minuten} Min."\n`;
+                });
             });
-            
+
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
