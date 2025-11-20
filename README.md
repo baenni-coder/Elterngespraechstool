@@ -6,13 +6,21 @@ Ein benutzerfreundliches Tool zur Koordination von Elterngesprächen. Lehrperson
 
 - **Für Lehrpersonen:**
   - Termine erstellen und verwalten
-  - Eltern-Antworten einsehen
+  - Eigenen Namen konfigurieren (wird Eltern angezeigt)
+  - Mindestanzahl Termine festlegen (die Eltern auswählen müssen)
+  - Eltern-Antworten einsehen (gruppiert nach Kindname)
+  - Gemeinsame Termine bei getrennten Eltern (automatische Schnittmenge)
   - Termine intelligent zuteilen
+  - Optionaler automatischer E-Mail-Versand (EmailJS)
   - E-Mail-Vorlagen und Kalender-Downloads (.ics)
   - CSV-Export für Mail-Merge
 
 - **Für Eltern:**
   - Einfache Terminauswahl ohne Login
+  - Mehrere Kinder gleichzeitig für gleiche Termine erfassen
+  - Lehrperson-Name wird angezeigt (zur Orientierung)
+  - Getrennte Eltern können unabhängig Termine wählen
+  - Lokaler Link-Speicher (automatischer Rücksprung zum letzten Formular)
   - Übersichtliche Darstellung verfügbarer Termine
   - Mehrfachauswahl möglich
 
@@ -135,20 +143,44 @@ Du kannst die App auch auf GitHub Pages hosten:
 
 1. Öffne die App und klicke auf "Für Lehrpersonen"
 2. Erstelle ein Konto mit deiner E-Mail-Adresse
-3. Erstelle Termine im Tab "Meine Termine"
-4. Kopiere den Link aus dem Tab "Link teilen"
-5. Sende den Link per E-Mail an die Eltern
-6. Warte auf die Antworten der Eltern (Tab "Eltern-Antworten")
-7. Weise die Termine zu (Tab "Zuteilung")
-8. Lade E-Mail-Vorlagen und Kalender-Dateien herunter
+3. **Einstellungen konfigurieren (Tab "Meine Termine"):**
+   - Trage deinen Namen ein (z.B. "Frau Müller") - wird den Eltern angezeigt
+   - Lege die Mindestanzahl der Termine fest (die Eltern auswählen müssen)
+   - Optional: Aktiviere automatischen E-Mail-Versand (siehe unten)
+4. Erstelle Termine im Tab "Meine Termine"
+5. Kopiere den Link aus dem Tab "Link teilen"
+6. Sende den Link per E-Mail an die Eltern
+7. Warte auf die Antworten der Eltern (Tab "Eltern-Antworten")
+   - Bei getrennten Eltern werden automatisch nur gemeinsame Termine angezeigt
+   - Wenn beide Elternteile geantwortet haben, siehst du: "✓ 2 Elternteile haben geantwortet"
+8. Weise die Termine zu (Tab "Zuteilung")
+9. Lade E-Mail-Vorlagen und Kalender-Dateien herunter (oder automatischer Versand)
 
 ### Für Eltern
 
 1. Öffne den Link, den du von der Lehrperson erhalten hast
-2. Gib den Namen deines Kindes und deine E-Mail-Adresse ein
-3. Wähle alle Termine aus, die für dich passen
-4. Klicke auf "Verfügbarkeit absenden"
-5. Du erhältst eine Bestätigung per E-Mail, sobald die Lehrperson die Termine zugeteilt hat
+2. **Mehrere Kinder erfassen (optional):**
+   - Gib den Namen deines ersten Kindes ein
+   - Klicke auf "➕ Weiteres Kind hinzufügen" für weitere Kinder
+   - Alle Kinder bekommen die gleichen Termine
+3. Gib deine E-Mail-Adresse ein
+4. Wähle alle Termine aus, die für dich passen
+5. Klicke auf "Verfügbarkeit absenden"
+6. Der Link wird lokal gespeichert - beim nächsten Besuch auf der Startseite kommst du direkt zurück
+7. Du erhältst eine Bestätigung per E-Mail, sobald die Lehrperson die Termine zugeteilt hat
+
+### Besonderheit: Getrennte Eltern
+
+Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
+
+**Beispiel: Anna's Eltern sind getrennt**
+1. **Mutter füllt aus:** "Anna Müller" - wählt Termine [Mo 10:00, Di 14:00, Mi 16:00]
+2. **Vater füllt aus:** "Anna Müller" - wählt Termine [Di 14:00, Mi 16:00, Do 11:00]
+3. **Lehrperson sieht:** Nur die gemeinsamen Termine [Di 14:00, Mi 16:00]
+4. **Lehrperson teilt zu:** z.B. Di 14:00
+5. **Beide Eltern erhalten:** E-Mail mit Termin Di 14:00
+
+➡️ Das System berechnet automatisch die Schnittmenge der verfügbaren Termine!
 
 ## Datenstruktur (Firestore)
 
@@ -188,11 +220,12 @@ Du kannst die App auch auf GitHub Pages hosten:
 ### Collection: `settings`
 ```
 {
-  min_termine_anzahl: number
-  auto_email_enabled: boolean
-  emailjs_service_id: string (optional)
-  emailjs_template_id: string (optional)
-  emailjs_public_key: string (optional)
+  teacher_name: string (optional, Name der Lehrperson)
+  min_termine_anzahl: number (Mindestanzahl Termine)
+  auto_email_enabled: boolean (Auto-E-Mail aktiv?)
+  emailjs_service_id: string (optional, für E-Mail-Versand)
+  emailjs_template_id: string (optional, für E-Mail-Versand)
+  emailjs_public_key: string (optional, für E-Mail-Versand)
   updated_at: timestamp
 }
 ```
