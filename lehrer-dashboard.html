@@ -350,6 +350,81 @@
             width: 18px;
             height: 18px;
         }
+
+        /* FAQ Accordion Styles */
+        .faq-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 18px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #333;
+            transition: background 0.3s;
+        }
+
+        .faq-question:hover {
+            background: #e9ecef;
+        }
+
+        .faq-question.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .faq-arrow {
+            transition: transform 0.3s;
+            font-size: 12px;
+        }
+
+        .faq-question.active .faq-arrow {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: white;
+        }
+
+        .faq-answer.open {
+            max-height: 500px;
+        }
+
+        .faq-answer-content {
+            padding: 20px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .faq-answer-content ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .faq-answer-content li {
+            margin-bottom: 5px;
+        }
+
+        .faq-category {
+            margin-bottom: 30px;
+        }
+
+        .faq-category h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
     </style>
 </head>
 <body>
@@ -374,6 +449,7 @@
             <div class="tab" onclick="switchTab('antworten')">📨 Eltern-Antworten (<span id="antworten-count">0</span>)</div>
             <div class="tab" onclick="switchTab('zuteilung')">✅ Zuteilung</div>
             <div class="tab" onclick="switchTab('verwaltung')">⚙️ Verwaltung</div>
+            <div class="tab" onclick="switchTab('hilfe')">❓ Hilfe</div>
         </div>
         
         <div class="content">
@@ -543,6 +619,230 @@
                 
                 <div id="verwaltung-message" style="margin-top: 20px;"></div>
             </div>
+
+            <!-- Tab: Hilfe -->
+            <div id="tab-hilfe" class="tab-content">
+                <h2>Hilfe & FAQ</h2>
+                <p style="color: #666; margin-bottom: 30px;">Hier finden Sie Antworten auf häufig gestellte Fragen zur Nutzung des Elterngesprächstools.</p>
+
+                <!-- Erste Schritte -->
+                <div class="faq-category">
+                    <h3>Erste Schritte</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie starte ich mit dem Tool?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <ol>
+                                    <li><strong>Termine erstellen:</strong> Gehen Sie zum Tab "Meine Termine" und erstellen Sie Ihre verfügbaren Zeitfenster.</li>
+                                    <li><strong>Link teilen:</strong> Kopieren Sie den Link im Tab "Link teilen" und senden Sie ihn per E-Mail an die Eltern.</li>
+                                    <li><strong>Antworten abwarten:</strong> Die Eltern wählen ihre verfügbaren Termine aus.</li>
+                                    <li><strong>Zuteilen:</strong> Im Tab "Zuteilung" weisen Sie jedem Kind einen Termin zu.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie teile ich den Link mit den Eltern?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Gehen Sie zum Tab <strong>"Link teilen"</strong>. Dort finden Sie einen personalisierten Link, den Sie kopieren und per E-Mail an die Eltern senden können.</p>
+                                <p style="margin-top: 10px;"><strong>Tipp:</strong> Die Eltern brauchen kein Konto - sie können direkt über den Link ihre Verfügbarkeit angeben.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Termine & Zuteilung -->
+                <div class="faq-category">
+                    <h3>Termine & Zuteilung</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was bedeutet die Mindestanzahl Termine?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Die Mindestanzahl (Standard: 3) legt fest, wie viele Termine die Eltern mindestens auswählen müssen. Dies erhöht die Chance, dass Sie einen passenden Termin finden.</p>
+                                <p style="margin-top: 10px;">Sie können diese Einstellung im Tab "Meine Termine" unter "Einstellungen" anpassen.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie funktioniert die Zuteilung?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <ol>
+                                    <li>Gehen Sie zum Tab <strong>"Zuteilung"</strong>.</li>
+                                    <li>Für jeden Termin sehen Sie, welche Eltern diesen Termin gewählt haben.</li>
+                                    <li>Klicken Sie auf ein Kind, um es diesem Termin zuzuteilen.</li>
+                                    <li>Bereits zugeteilte Kinder werden bei anderen Terminen automatisch ausgegraut.</li>
+                                    <li>Klicken Sie auf <strong>"Zuteilungen speichern"</strong>, um die Zuteilungen zu bestätigen.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Kann ich eine Zuteilung rückgängig machen?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Ja! Klicken Sie im Tab "Zuteilung" einfach erneut auf das bereits zugeteilte Kind - die Zuteilung wird aufgehoben. Speichern Sie dann die Änderungen.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Getrennte Eltern -->
+                <div class="faq-category">
+                    <h3>Getrennte Eltern & Mehrere Kinder</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie funktioniert das bei getrennten Eltern?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Wenn beide Elternteile das Formular separat ausfüllen und <strong>denselben Kindnamen</strong> eingeben, erkennt das System dies automatisch:</p>
+                                <ul>
+                                    <li>Im Tab "Eltern-Antworten" sehen Sie "<strong>2 Elternteile haben geantwortet</strong>".</li>
+                                    <li>Es werden nur die <strong>gemeinsamen Termine</strong> angezeigt (Schnittmenge).</li>
+                                    <li>Bei der Zuteilung wird <strong>beiden Elternteilen</strong> derselbe Termin zugewiesen.</li>
+                                    <li>Beide erhalten separate E-Mail-Vorlagen und ICS-Dateien.</li>
+                                </ul>
+                                <p style="margin-top: 10px;"><strong>Wichtig:</strong> Der Kindname muss exakt übereinstimmen (Gross-/Kleinschreibung beachten).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Können Eltern mehrere Kinder gleichzeitig anmelden?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Ja! Im Eltern-Formular können Eltern über den Button <strong>"Weiteres Kind hinzufügen"</strong> mehrere Kinder erfassen. Jedes Kind erscheint dann separat in Ihrer Übersicht.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- E-Mail & Export -->
+                <div class="faq-category">
+                    <h3>E-Mail & Export</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie richte ich automatische E-Mails ein?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Der automatische E-Mail-Versand nutzt <strong>EmailJS</strong> (kostenlos für kleine Volumen):</p>
+                                <ol>
+                                    <li>Erstellen Sie ein Konto auf <a href="https://www.emailjs.com" target="_blank" style="color: #667eea;">emailjs.com</a>.</li>
+                                    <li>Erstellen Sie einen E-Mail-Service und ein Template.</li>
+                                    <li>Kopieren Sie Service ID, Template ID und Public Key.</li>
+                                    <li>Aktivieren Sie "Automatischer E-Mail-Versand" in den Einstellungen und fügen Sie die IDs ein.</li>
+                                </ol>
+                                <p style="margin-top: 10px;">Detaillierte Anleitung finden Sie in der README-Datei.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was sind ICS-Dateien und wie nutze ich sie?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p><strong>ICS-Dateien</strong> sind Kalender-Dateien, die in fast allen Kalender-Apps importiert werden können (Outlook, Google Calendar, Apple Kalender, etc.).</p>
+                                <p style="margin-top: 10px;">Nach dem Speichern der Zuteilungen können Sie:</p>
+                                <ul>
+                                    <li>Einzelne ICS-Dateien für jeden Termin herunterladen (zum Versenden an Eltern).</li>
+                                    <li>Alle Termine als eine ICS-Datei herunterladen (für Ihren eigenen Kalender).</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wofür ist der CSV-Export?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Der CSV-Export erstellt eine Tabelle mit allen Zuteilungen (Kindname, E-Mail, Datum, Uhrzeit, Dauer). Diese können Sie für:</p>
+                                <ul>
+                                    <li><strong>Mail-Merge:</strong> Serien-E-Mails in Outlook oder anderen Programmen.</li>
+                                    <li><strong>Dokumentation:</strong> Import in Excel für Ihre Unterlagen.</li>
+                                    <li><strong>Druck:</strong> Erstellen von Listen für den Aushang.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verwaltung -->
+                <div class="faq-category">
+                    <h3>Verwaltung & Zurücksetzen</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie starte ich eine neue Gesprächsrunde?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Gehen Sie zum Tab <strong>"Verwaltung"</strong> und wählen Sie:</p>
+                                <ul>
+                                    <li><strong>"Antworten & Zuteilungen löschen":</strong> Behält Ihre Termine, löscht nur die Eltern-Antworten. Ideal für eine neue Runde mit denselben Zeitfenstern.</li>
+                                    <li><strong>"Alles löschen":</strong> Löscht alles (Termine, Antworten, Zuteilungen). Für einen kompletten Neustart.</li>
+                                </ul>
+                                <p style="margin-top: 10px; color: #e74c3c;"><strong>Achtung:</strong> Diese Aktionen können nicht rückgängig gemacht werden!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Kann ich einzelne Termine oder Antworten löschen?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p><strong>Termine:</strong> Ja, im Tab "Meine Termine" können Sie einzelne Termine über den "Löschen"-Button entfernen.</p>
+                                <p style="margin-top: 10px;"><strong>Antworten:</strong> Einzelne Eltern-Antworten können derzeit nicht gelöscht werden. Nutzen Sie dafür die Zurücksetzen-Funktion im Tab "Verwaltung".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kontakt -->
+                <div style="background: #e8f4f8; padding: 25px; border-radius: 8px; margin-top: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">Weitere Fragen?</h3>
+                    <p style="color: #666;">Falls Sie weitere Fragen haben oder technische Probleme auftreten, wenden Sie sich bitte an Ihren Administrator oder konsultieren Sie die README-Dokumentation.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -579,7 +879,7 @@
         function switchTab(tabName) {
             // Tabs
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            const tabIndex = { termine: 1, share: 2, antworten: 3, zuteilung: 4, verwaltung: 5 }[tabName];
+            const tabIndex = { termine: 1, share: 2, antworten: 3, zuteilung: 4, verwaltung: 5, hilfe: 6 }[tabName];
             document.querySelector(`.tab:nth-child(${tabIndex})`).classList.add('active');
 
             // Content
@@ -1630,6 +1930,21 @@ END:VEVENT
                 
             } catch (error) {
                 showMessage('verwaltung', 'Fehler: ' + error.message, 'error');
+            }
+        }
+
+        function toggleFaq(element) {
+            const answer = element.nextElementSibling;
+            const isOpen = answer.classList.contains('open');
+
+            // Close all other FAQs
+            document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('open'));
+            document.querySelectorAll('.faq-question').forEach(q => q.classList.remove('active'));
+
+            // Toggle current
+            if (!isOpen) {
+                answer.classList.add('open');
+                element.classList.add('active');
             }
         }
     </script>
