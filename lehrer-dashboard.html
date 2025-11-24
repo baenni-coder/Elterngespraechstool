@@ -425,6 +425,105 @@
             padding-bottom: 10px;
             border-bottom: 2px solid #e0e0e0;
         }
+
+        /* Merge UI Styles */
+        .merge-controls {
+            background: #fff3cd;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #ffc107;
+            display: none;
+        }
+
+        .merge-controls.active {
+            display: block;
+        }
+
+        .merge-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        .antwort-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .antwort-card-header h4 {
+            margin: 0;
+            flex: 1;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #667eea;
+            margin: 0;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -555,7 +654,22 @@
             <div id="tab-antworten" class="tab-content">
                 <h2>Eltern-Antworten</h2>
                 <p style="color: #666; margin-bottom: 20px;">Übersicht der Eltern, die ihre Verfügbarkeit angegeben haben.</p>
-                
+
+                <!-- Merge Controls -->
+                <div id="merge-controls" class="merge-controls">
+                    <p style="margin: 0 0 10px 0; color: #856404;">
+                        <strong>📝 Antworten zusammenführen</strong><br>
+                        <span style="font-size: 13px;">Wählen Sie mehrere Antworten aus, die zum gleichen Kind gehören (z.B. bei unterschiedlich geschriebenen Namen).</span>
+                    </p>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary btn-small" onclick="openMergeModal()">✓ Ausgewählte zusammenführen</button>
+                        <button class="btn btn-secondary btn-small" onclick="cancelMerge()">Abbrechen</button>
+                        <span id="merge-selection-count" style="color: #856404; padding: 8px 0; font-weight: 600;"></span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="enableMergeMode()" id="enable-merge-btn" style="margin-bottom: 20px;">🔀 Antworten zusammenführen</button>
+
                 <div id="antworten-liste" class="antworten-liste"></div>
             </div>
             
@@ -846,11 +960,40 @@
         </div>
     </div>
 
+    <!-- Merge Modal -->
+    <div id="merge-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Antworten zusammenführen</h3>
+            </div>
+            <div class="modal-body">
+                <p style="color: #666; margin-bottom: 15px;">
+                    Sie führen <strong id="modal-merge-count">0</strong> Antworten zusammen.<br>
+                    Bitte geben Sie den finalen Kindnamen ein:
+                </p>
+                <div class="form-group">
+                    <label>Kindname (z.B. "Anna Müller")</label>
+                    <input type="text" id="modal-kindname" placeholder="Kindname eingeben" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                </div>
+                <div id="modal-selected-list" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                    <p style="font-weight: 600; margin-bottom: 8px; color: #667eea;">Ausgewählte Antworten:</p>
+                    <ul id="modal-selected-items" style="margin: 0; padding-left: 20px; color: #666;"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMergeModal()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="confirmMerge()">✓ Zusammenführen</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let allTermine = [];
         let allAntworten = [];
         let assignments = {}; // { antwortId: terminId }
+        let mergeMode = false; // Merge-Modus aktiv?
+        let selectedForMerge = []; // Array von ausgewählten Kindnamen für Merge
         
         // Beim Laden prüfen ob eingeloggt
         window.onload = async () => {
@@ -1185,9 +1328,17 @@
                         return `<span class="termin-tag">${formattedDate} ${termin.zeit}</span>`;
                     }).join('');
 
+                    // Checkbox für Merge-Modus
+                    const checkboxHtml = mergeMode ? `
+                        <input type="checkbox" class="merge-checkbox" data-kindname="${kindname}" onchange="updateMergeSelection()">
+                    ` : '';
+
                     html += `
                         <div class="antwort-card">
-                            <h4>${kindname}</h4>
+                            <div class="antwort-card-header">
+                                ${checkboxHtml}
+                                <h4>${kindname}</h4>
+                            </div>
                             ${antworten.length > 1 ? `<p style="color: #2ecc71; font-weight: 600;">✓ ${antworten.length} Elternteile haben geantwortet</p>` : ''}
                             <p><strong>E-Mail${antworten.length > 1 ? 's' : ''}:</strong> ${emails}</p>
                             <p><strong>${antworten.length > 1 ? 'Gemeinsame verfügbare Termine:' : 'Verfügbare Termine:'}</strong></p>
@@ -1945,6 +2096,131 @@ END:VEVENT
             if (!isOpen) {
                 answer.classList.add('open');
                 element.classList.add('active');
+            }
+        }
+
+        // ===== MERGE FUNKTIONEN =====
+
+        function enableMergeMode() {
+            mergeMode = true;
+            selectedForMerge = [];
+
+            // Zeige Merge-Controls
+            document.getElementById('merge-controls').classList.add('active');
+            document.getElementById('enable-merge-btn').style.display = 'none';
+
+            // Lade Antworten neu (mit Checkboxen)
+            loadAntworten();
+        }
+
+        function cancelMerge() {
+            mergeMode = false;
+            selectedForMerge = [];
+
+            // Verstecke Merge-Controls
+            document.getElementById('merge-controls').classList.remove('active');
+            document.getElementById('enable-merge-btn').style.display = 'block';
+
+            // Lade Antworten neu (ohne Checkboxen)
+            loadAntworten();
+        }
+
+        function updateMergeSelection() {
+            // Sammle alle ausgewählten Checkboxen
+            const checkboxes = document.querySelectorAll('.merge-checkbox:checked');
+            selectedForMerge = Array.from(checkboxes).map(cb => cb.dataset.kindname);
+
+            // Zeige Anzahl
+            const countSpan = document.getElementById('merge-selection-count');
+            if (selectedForMerge.length > 0) {
+                countSpan.textContent = `${selectedForMerge.length} ausgewählt`;
+            } else {
+                countSpan.textContent = '';
+            }
+        }
+
+        function openMergeModal() {
+            if (selectedForMerge.length < 2) {
+                alert('Bitte wählen Sie mindestens 2 Antworten aus, die zusammengeführt werden sollen.');
+                return;
+            }
+
+            // Setze Anzahl
+            document.getElementById('modal-merge-count').textContent = selectedForMerge.length;
+
+            // Erstelle Liste der ausgewählten Antworten
+            const listHtml = selectedForMerge.map(kindname => `<li>${kindname}</li>`).join('');
+            document.getElementById('modal-selected-items').innerHTML = listHtml;
+
+            // Vorschlag für Kindnamen (erster ausgewählter Name)
+            document.getElementById('modal-kindname').value = selectedForMerge[0];
+
+            // Öffne Modal
+            document.getElementById('merge-modal').classList.add('active');
+        }
+
+        function closeMergeModal() {
+            document.getElementById('merge-modal').classList.remove('active');
+            document.getElementById('modal-kindname').value = '';
+        }
+
+        async function confirmMerge() {
+            const finalKindname = document.getElementById('modal-kindname').value.trim();
+
+            if (!finalKindname) {
+                alert('Bitte geben Sie einen Kindnamen ein.');
+                return;
+            }
+
+            // Bestätigung
+            if (!confirm(`Sie führen ${selectedForMerge.length} Antworten zusammen unter dem Namen "${finalKindname}".\n\nDies wird alle ausgewählten Antworten in der Datenbank aktualisieren.\n\nFortfahren?`)) {
+                return;
+            }
+
+            try {
+                // Zeige Loading
+                const modal = document.getElementById('merge-modal');
+                const modalContent = modal.querySelector('.modal-content');
+                const originalHTML = modalContent.innerHTML;
+                modalContent.innerHTML = '<div style="text-align: center; padding: 40px;"><h3>Wird zusammengeführt...</h3></div>';
+
+                // Sammle alle Antwort-IDs die zu den ausgewählten Kindnamen gehören
+                const antwortIds = [];
+                selectedForMerge.forEach(kindname => {
+                    const matchingAntworten = allAntworten.filter(a => a.kindname === kindname);
+                    matchingAntworten.forEach(a => antwortIds.push(a.id));
+                });
+
+                console.log('Merge:', selectedForMerge, 'zu', finalKindname);
+                console.log('Antwort-IDs:', antwortIds);
+
+                // Update Firestore: Setze alle Antworten auf den neuen Kindnamen
+                const batch = db.batch();
+                antwortIds.forEach(antwortId => {
+                    const docRef = db.collection('antworten').doc(antwortId);
+                    batch.update(docRef, { kindname: finalKindname });
+                });
+
+                await batch.commit();
+
+                console.log('✓ Antworten erfolgreich zusammengeführt');
+
+                // Schließe Modal
+                closeMergeModal();
+
+                // Zeige Erfolg
+                alert(`✓ Erfolgreich! ${antwortIds.length} Antworten wurden unter dem Namen "${finalKindname}" zusammengeführt.`);
+
+                // Beende Merge-Modus und lade Antworten neu
+                cancelMerge();
+
+                // Lade Antworten und Zuteilungen neu
+                await loadAntworten();
+
+            } catch (error) {
+                console.error('Fehler beim Zusammenführen:', error);
+                alert('Fehler beim Zusammenführen: ' + error.message);
+                closeMergeModal();
             }
         }
     </script>
