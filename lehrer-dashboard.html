@@ -987,6 +987,27 @@
         </div>
     </div>
 
+    <!-- Split Modal -->
+    <div id="split-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Antworten trennen</h3>
+            </div>
+            <div class="modal-body">
+                <p style="color: #666; margin-bottom: 15px;">
+                    Wählen Sie die Antworten aus, die Sie trennen möchten, und geben Sie für jede einen neuen Kindnamen ein:
+                </p>
+                <div id="split-answers-list" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Wird dynamisch gefüllt -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeSplitModal()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="confirmSplit()">✂️ Trennen</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let allTermine = [];
@@ -1333,11 +1354,19 @@
                         <input type="checkbox" class="merge-checkbox" data-kindname="${kindname}" onchange="updateMergeSelection()">
                     ` : '';
 
+                    // Trennen-Button für gemergte Antworten (mehr als 1 Elternteil)
+                    const splitButtonHtml = !mergeMode && antworten.length > 1 ? `
+                        <button class="btn btn-small" onclick="openSplitModal('${kindname.replace(/'/g, "\\'")}')" style="background: #ff9800; color: white; margin-left: auto;">
+                            ✂️ Trennen
+                        </button>
+                    ` : '';
+
                     html += `
                         <div class="antwort-card">
                             <div class="antwort-card-header">
                                 ${checkboxHtml}
                                 <h4>${kindname}</h4>
+                                ${splitButtonHtml}
                             </div>
                             ${antworten.length > 1 ? `<p style="color: #2ecc71; font-weight: 600;">✓ ${antworten.length} Elternteile haben geantwortet</p>` : ''}
                             <p><strong>E-Mail${antworten.length > 1 ? 's' : ''}:</strong> ${emails}</p>
@@ -2236,6 +2265,140 @@ END:VEVENT
                 modalContent.innerHTML = originalHTML;
 
                 alert('Fehler beim Zusammenführen: ' + error.message);
+            }
+        }
+
+        // ===== SPLIT FUNKTIONEN =====
+
+        function openSplitModal(kindname) {
+            // Finde alle Antworten mit diesem Kindnamen
+            const antworten = allAntworten.filter(a => a.kindname === kindname);
+
+            if (antworten.length <= 1) {
+                alert('Es gibt nur eine Antwort für dieses Kind. Trennen ist nicht möglich.');
+                return;
+            }
+
+            // Erstelle Liste der Antworten
+            const listDiv = document.getElementById('split-answers-list');
+            let html = '';
+
+            antworten.forEach((antwort, index) => {
+                html += `
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <input type="checkbox" id="split-cb-${antwort.id}" class="split-checkbox"
+                                   data-antwort-id="${antwort.id}" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                            <label for="split-cb-${antwort.id}" style="cursor: pointer; flex: 1; font-weight: 600; color: #667eea;">
+                                Antwort ${index + 1}: ${antwort.email}
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 13px; color: #666;">Neuer Kindname (nur wenn ausgewählt):</label>
+                            <input type="text" id="split-name-${antwort.id}" placeholder="z.B. Anna Mueller"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;"
+                                   disabled>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listDiv.innerHTML = html;
+
+            // Event Listener für Checkboxen
+            antworten.forEach(antwort => {
+                const checkbox = document.getElementById(`split-cb-${antwort.id}`);
+                const input = document.getElementById(`split-name-${antwort.id}`);
+
+                checkbox.addEventListener('change', () => {
+                    input.disabled = !checkbox.checked;
+                    if (checkbox.checked) {
+                        input.focus();
+                    }
+                });
+            });
+
+            // Öffne Modal
+            document.getElementById('split-modal').classList.add('active');
+        }
+
+        function closeSplitModal() {
+            document.getElementById('split-modal').classList.remove('active');
+        }
+
+        async function confirmSplit() {
+            // Sammle alle ausgewählten Antworten
+            const checkboxes = document.querySelectorAll('.split-checkbox:checked');
+
+            if (checkboxes.length === 0) {
+                alert('Bitte wählen Sie mindestens eine Antwort aus, die getrennt werden soll.');
+                return;
+            }
+
+            // Sammle Updates
+            const updates = [];
+            let hasError = false;
+
+            checkboxes.forEach(cb => {
+                const antwortId = cb.dataset.antwortId;
+                const newName = document.getElementById(`split-name-${antwortId}`).value.trim();
+
+                if (!newName) {
+                    alert(`Bitte geben Sie einen neuen Namen für die ausgewählte Antwort ein (${cb.parentElement.textContent.trim()}).`);
+                    hasError = true;
+                    return;
+                }
+
+                updates.push({ antwortId, newName });
+            });
+
+            if (hasError || updates.length === 0) return;
+
+            // Bestätigung
+            if (!confirm(`Sie trennen ${updates.length} Antwort(en) und geben ihnen neue Namen.\n\nFortfahren?`)) {
+                return;
+            }
+
+            const modal = document.getElementById('split-modal');
+            const modalContent = modal.querySelector('.modal-content');
+            const originalHTML = modalContent.innerHTML;
+
+            try {
+                // Zeige Loading
+                modalContent.innerHTML = '<div style="text-align: center; padding: 40px;"><h3>Wird getrennt...</h3></div>';
+
+                // Update Firestore
+                const batch = db.batch();
+                updates.forEach(update => {
+                    const docRef = db.collection('antworten').doc(update.antwortId);
+                    batch.update(docRef, { kindname: update.newName });
+                });
+
+                await batch.commit();
+
+                console.log('✓ Antworten erfolgreich getrennt');
+
+                // Schließe Modal
+                modal.classList.remove('active');
+
+                // Stelle Original-Inhalt wieder her
+                setTimeout(() => {
+                    modalContent.innerHTML = originalHTML;
+                }, 300);
+
+                // Zeige Erfolg
+                alert(`✓ Erfolgreich! ${updates.length} Antwort(en) wurden getrennt.`);
+
+                // Lade Antworten neu
+                await loadAntworten();
+
+            } catch (error) {
+                console.error('Fehler beim Trennen:', error);
+
+                // Stelle Original-Inhalt wieder her
+                modalContent.innerHTML = originalHTML;
+
+                alert('Fehler beim Trennen: ' + error.message);
             }
         }
     </script>
