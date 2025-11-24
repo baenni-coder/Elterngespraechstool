@@ -25,7 +25,7 @@ service cloud.firestore {
     match /antworten/{antwortId} {
       allow read: if isSignedIn();
       allow create: if true; // Eltern können ohne Login antworten
-      allow update: if false; // Kann nicht bearbeitet werden
+      allow update: if isSignedIn(); // Lehrer können Kindnamen für Merge aktualisieren
       allow delete: if isSignedIn(); // Lehrer können löschen
     }
 

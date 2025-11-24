@@ -2160,8 +2160,14 @@ END:VEVENT
         }
 
         function closeMergeModal() {
-            document.getElementById('merge-modal').classList.remove('active');
-            document.getElementById('modal-kindname').value = '';
+            const modal = document.getElementById('merge-modal');
+            modal.classList.remove('active');
+
+            // Setze Input nur zurück, wenn es existiert (könnte durch Loading-Screen überschrieben sein)
+            const input = document.getElementById('modal-kindname');
+            if (input) {
+                input.value = '';
+            }
         }
 
         async function confirmMerge() {
@@ -2177,11 +2183,12 @@ END:VEVENT
                 return;
             }
 
+            const modal = document.getElementById('merge-modal');
+            const modalContent = modal.querySelector('.modal-content');
+            const originalHTML = modalContent.innerHTML;
+
             try {
                 // Zeige Loading
-                const modal = document.getElementById('merge-modal');
-                const modalContent = modal.querySelector('.modal-content');
-                const originalHTML = modalContent.innerHTML;
                 modalContent.innerHTML = '<div style="text-align: center; padding: 40px;"><h3>Wird zusammengeführt...</h3></div>';
 
                 // Sammle alle Antwort-IDs die zu den ausgewählten Kindnamen gehören
@@ -2205,8 +2212,13 @@ END:VEVENT
 
                 console.log('✓ Antworten erfolgreich zusammengeführt');
 
-                // Schließe Modal
-                closeMergeModal();
+                // Schließe Modal (erst nach erfolgreichem Update)
+                modal.classList.remove('active');
+
+                // Stelle Original-Inhalt wieder her für nächstes Mal
+                setTimeout(() => {
+                    modalContent.innerHTML = originalHTML;
+                }, 300);
 
                 // Zeige Erfolg
                 alert(`✓ Erfolgreich! ${antwortIds.length} Antworten wurden unter dem Namen "${finalKindname}" zusammengeführt.`);
@@ -2214,13 +2226,16 @@ END:VEVENT
                 // Beende Merge-Modus und lade Antworten neu
                 cancelMerge();
 
-                // Lade Antworten und Zuteilungen neu
+                // Lade Antworten neu
                 await loadAntworten();
 
             } catch (error) {
                 console.error('Fehler beim Zusammenführen:', error);
+
+                // Stelle Original-Inhalt wieder her
+                modalContent.innerHTML = originalHTML;
+
                 alert('Fehler beim Zusammenführen: ' + error.message);
-                closeMergeModal();
             }
         }
     </script>
