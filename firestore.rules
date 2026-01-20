@@ -44,5 +44,12 @@ service cloud.firestore {
       allow read: if true; // Öffentlich lesbar für Eltern-Formular
       allow write: if isOwner(userId);
     }
+
+    // Encryption Keys: Öffentlich lesbar (für Eltern zum Verschlüsseln),
+    // aber nur der Besitzer kann schreiben
+    match /encryption_keys/{userId} {
+      allow read: if true; // Öffentlich lesbar für Eltern-Formular
+      allow write: if isOwner(userId);
+    }
   }
 }

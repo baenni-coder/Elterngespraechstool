@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- CryptoJS für Verschlüsselung -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
     <style>
         * {
@@ -542,19 +544,26 @@
                 console.log('E-Mail:', email);
                 console.log('Selected Termine:', selectedTermine);
 
+                // Lade Encryption Key der Lehrperson
+                const encryptionKey = await crypto.getEncryptionKey(teacherId);
+                if (!encryptionKey) {
+                    throw new Error('Verschlüsselungskey konnte nicht geladen werden. Bitte kontaktieren Sie die Lehrperson.');
+                }
+
                 // Erstelle für jedes Kind einen separaten Eintrag
                 for (const kindname of kindnamen) {
                     const dataToInsert = {
                         termin_gruppe_id: teacherId,
-                        kindname: kindname,
-                        email: email,
+                        kindname_encrypted: crypto.encrypt(kindname, encryptionKey),
+                        kindname_hash: crypto.hash(kindname),
+                        email_encrypted: crypto.encrypt(email, encryptionKey),
                         verfuegbare_termine: selectedTermine,
                         created_at: firebase.firestore.FieldValue.serverTimestamp()
                     };
 
                     // Speichere in Firestore
                     await db.collection('antworten').add(dataToInsert);
-                    console.log(`✓ Gespeichert für: ${kindname}`);
+                    console.log(`✓ Gespeichert für: ${kindname} (verschlüsselt)`);
                 }
 
                 console.log('=== SUCCESS ===');

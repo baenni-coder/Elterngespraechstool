@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- CryptoJS für Verschlüsselung -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
     <!-- EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
@@ -1010,30 +1012,34 @@
 
     <script>
         let currentUser = null;
+        let encryptionKey = null; // Encryption Key für Verschlüsselung/Entschlüsselung
         let allTermine = [];
         let allAntworten = [];
         let assignments = {}; // { antwortId: terminId }
         let mergeMode = false; // Merge-Modus aktiv?
         let selectedForMerge = []; // Array von ausgewählten Kindnamen für Merge
-        
+
         // Beim Laden prüfen ob eingeloggt
         window.onload = async () => {
             currentUser = await helpers.checkAuth();
-            
+
             if (!currentUser) {
                 window.location.href = 'lehrer-login.html';
                 return;
             }
-            
+
+            // Encryption Key laden oder erstellen
+            encryptionKey = await crypto.getOrCreateEncryptionKey(currentUser.uid);
+
             document.getElementById('user-email').textContent = currentUser.email;
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
-            
+
             // Share-URL setzen
             const baseUrl = window.location.origin + window.location.pathname.replace('lehrer-dashboard.html', '');
             const shareUrl = baseUrl + 'eltern-formular.html?teacher=' + currentUser.uid;
             document.getElementById('share-url').value = shareUrl;
-            
+
             // Daten laden
             await loadTermine();
             await loadAntworten();
@@ -1286,6 +1292,21 @@
                         return antwort.verfuegbare_termine.some(terminId => meinTerminIds.includes(terminId));
                     });
 
+                // Entschlüssele sensible Daten
+                filteredAntworten.forEach(antwort => {
+                    // Unterstütze sowohl alte (unverschlüsselt) als auch neue (verschlüsselt) Daten
+                    if (antwort.kindname_encrypted) {
+                        antwort.kindname = crypto.decrypt(antwort.kindname_encrypted, encryptionKey);
+                    }
+                    if (antwort.email_encrypted) {
+                        antwort.email = crypto.decrypt(antwort.email_encrypted, encryptionKey);
+                    }
+                    // Falls kindname_hash nicht existiert (alte Daten), berechne ihn
+                    if (!antwort.kindname_hash && antwort.kindname) {
+                        antwort.kindname_hash = crypto.hash(antwort.kindname);
+                    }
+                });
+
                 // Speichere für Zuteilung
                 allAntworten = filteredAntworten;
 
@@ -1303,20 +1324,28 @@
                     return;
                 }
 
-                // Gruppiere Antworten nach Kindname
+                // Gruppiere Antworten nach Kindname-Hash (für konsistente Gruppierung)
                 const gruppierteAntworten = {};
                 allAntworten.forEach(antwort => {
-                    const kindname = antwort.kindname;
-                    if (!gruppierteAntworten[kindname]) {
-                        gruppierteAntworten[kindname] = [];
+                    const hash = antwort.kindname_hash;
+                    if (!gruppierteAntworten[hash]) {
+                        gruppierteAntworten[hash] = [];
                     }
-                    gruppierteAntworten[kindname].push(antwort);
+                    gruppierteAntworten[hash].push(antwort);
                 });
 
                 // Erstelle HTML für gruppierte Antworten
                 let html = '';
-                Object.keys(gruppierteAntworten).sort().forEach(kindname => {
-                    const antworten = gruppierteAntworten[kindname];
+                // Sortiere nach Kindname (nimm Namen aus erster Antwort in jeder Gruppe)
+                const sortedHashes = Object.keys(gruppierteAntworten).sort((a, b) => {
+                    const nameA = gruppierteAntworten[a][0].kindname;
+                    const nameB = gruppierteAntworten[b][0].kindname;
+                    return nameA.localeCompare(nameB);
+                });
+
+                sortedHashes.forEach(hash => {
+                    const antworten = gruppierteAntworten[hash];
+                    const kindname = antworten[0].kindname; // Nimm Namen aus erster Antwort
 
                     // Berechne gemeinsame Termine wenn mehrere Eltern geantwortet haben
                     let gemeinsameTermine = [];
@@ -1398,24 +1427,25 @@
                 return;
             }
 
-            // Gruppiere Antworten nach Kindname mit gemeinsamen Terminen
+            // Gruppiere Antworten nach Kindname-Hash mit gemeinsamen Terminen
             const kinderGruppen = {};
             const meinTerminIds = allTermine.map(t => t.id);
 
             allAntworten.forEach(antwort => {
-                const kindname = antwort.kindname;
-                if (!kinderGruppen[kindname]) {
-                    kinderGruppen[kindname] = {
+                const hash = antwort.kindname_hash;
+                if (!kinderGruppen[hash]) {
+                    kinderGruppen[hash] = {
+                        kindname: antwort.kindname, // Speichere Kindname für Anzeige
                         antworten: [],
                         gemeinsameTermine: []
                     };
                 }
-                kinderGruppen[kindname].antworten.push(antwort);
+                kinderGruppen[hash].antworten.push(antwort);
             });
 
             // Berechne gemeinsame Termine für jede Gruppe
-            Object.keys(kinderGruppen).forEach(kindname => {
-                const gruppe = kinderGruppen[kindname];
+            Object.keys(kinderGruppen).forEach(hash => {
+                const gruppe = kinderGruppen[hash];
                 if (gruppe.antworten.length > 1) {
                     // Schnittmenge berechnen
                     gruppe.gemeinsameTermine = gruppe.antworten[0].verfuegbare_termine.filter(terminId =>
@@ -1442,14 +1472,14 @@
                 ...doc.data()
             }));
 
-            // Setze assignments basierend auf gespeicherten Zuteilungen (jetzt nach Kindname)
+            // Setze assignments basierend auf gespeicherten Zuteilungen (nach Kindname-Hash)
             assignments = {};
             if (zuteilungen.length > 0) {
                 zuteilungen.forEach(z => {
                     const antwort = allAntworten.find(a => a.id === z.antwort_id);
                     if (antwort) {
-                        // Speichere nach Kindname statt antwort_id
-                        assignments[antwort.kindname] = z.termin_id;
+                        // Speichere nach Kindname-Hash für konsistente Gruppierung
+                        assignments[antwort.kindname_hash] = z.termin_id;
                     }
                 });
             }
@@ -1485,15 +1515,21 @@
                 let hasOptions = false;
 
                 // Iteriere über Kinder-Gruppen statt einzelne Antworten
-                Object.keys(window.kinderGruppen).sort().forEach(kindname => {
-                    const gruppe = window.kinderGruppen[kindname];
+                // Sortiere nach Kindname (aus gruppe.kindname)
+                const sortedHashes = Object.keys(window.kinderGruppen).sort((a, b) => {
+                    return window.kinderGruppen[a].kindname.localeCompare(window.kinderGruppen[b].kindname);
+                });
+
+                sortedHashes.forEach(hash => {
+                    const gruppe = window.kinderGruppen[hash];
+                    const kindname = gruppe.kindname;
 
                     // Prüfe ob dieser Termin in den gemeinsamen Terminen ist
                     if (gruppe.gemeinsameTermine.includes(termin.id)) {
                         hasOptions = true;
 
-                        const isAssignedElsewhere = assignments[kindname] && assignments[kindname] !== termin.id;
-                        const isSelected = assignments[kindname] === termin.id;
+                        const isAssignedElsewhere = assignments[hash] && assignments[hash] !== termin.id;
+                        const isSelected = assignments[hash] === termin.id;
 
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'eltern-option';
@@ -1507,7 +1543,7 @@
                             : `${kindname} (${emails})`;
 
                         optionDiv.innerHTML = `
-                            <input type="radio" name="kind-${kindname}" value="${termin.id}" ${isSelected ? 'checked' : ''} ${isAssignedElsewhere ? 'disabled' : ''}>
+                            <input type="radio" name="kind-${hash}" value="${termin.id}" ${isSelected ? 'checked' : ''} ${isAssignedElsewhere ? 'disabled' : ''}>
                             <label>${elternInfo}</label>
                         `;
 
@@ -1515,10 +1551,10 @@
                             if (!isAssignedElsewhere && !this.classList.contains('grayed-out')) {
                                 if (isSelected) {
                                     // Zuteilung aufheben
-                                    delete assignments[kindname];
+                                    delete assignments[hash];
                                 } else {
                                     // Neue Zuteilung
-                                    assignments[kindname] = termin.id;
+                                    assignments[hash] = termin.id;
                                 }
                                 renderZuteilungsArea();
                             }
@@ -1583,10 +1619,10 @@
                 console.log('Schritt 3: Erstelle neue Zuteilungen...');
                 const zuteilungenData = [];
 
-                // assignments enthält jetzt: { kindname: terminId }
+                // assignments enthält jetzt: { kindname_hash: terminId }
                 // Wir müssen für jede Antwort in der Gruppe eine Zuteilung erstellen
-                Object.entries(assignments).forEach(([kindname, terminId]) => {
-                    const gruppe = window.kinderGruppen[kindname];
+                Object.entries(assignments).forEach(([hash, terminId]) => {
+                    const gruppe = window.kinderGruppen[hash];
                     if (gruppe) {
                         // Erstelle für jede Antwort in der Gruppe eine Zuteilung
                         gruppe.antworten.forEach(antwort => {
@@ -1681,9 +1717,9 @@
                 let successCount = 0;
                 let errorCount = 0;
 
-                // Sende E-Mail für jede Zuteilung (assignments enthält jetzt kindname -> terminId)
-                for (const [kindname, terminId] of Object.entries(assignments)) {
-                    const gruppe = window.kinderGruppen[kindname];
+                // Sende E-Mail für jede Zuteilung (assignments enthält jetzt hash -> terminId)
+                for (const [hash, terminId] of Object.entries(assignments)) {
+                    const gruppe = window.kinderGruppen[hash];
                     const termin = allTermine.find(t => t.id === terminId);
 
                     if (!gruppe || !termin) continue;
@@ -1755,10 +1791,10 @@
             html += '<h3 style="margin-bottom: 15px; color: #667eea;">📧 E-Mail-Benachrichtigungen</h3>';
             html += '<p style="color: #666; margin-bottom: 20px;">Kopieren Sie die E-Mail-Texte und senden Sie sie an die Eltern:</p>';
 
-            // Für jeden zugeteilten Termin (assignments enthält jetzt kindname -> terminId)
-            Object.keys(assignments).forEach(kindname => {
-                const gruppe = window.kinderGruppen[kindname];
-                const termin = allTermine.find(t => t.id === assignments[kindname]);
+            // Für jeden zugeteilten Termin (assignments enthält jetzt hash -> terminId)
+            Object.keys(assignments).forEach(hash => {
+                const gruppe = window.kinderGruppen[hash];
+                const termin = allTermine.find(t => t.id === assignments[hash]);
 
                 if (!gruppe || !termin) return;
 
@@ -1863,9 +1899,9 @@ X-WR-TIMEZONE:Europe/Zurich
 `;
 
             // Iteriere über kinderGruppen statt assignments
-            Object.keys(assignments).forEach(kindname => {
-                const gruppe = window.kinderGruppen[kindname];
-                const termin = allTermine.find(t => t.id === assignments[kindname]);
+            Object.keys(assignments).forEach(hash => {
+                const gruppe = window.kinderGruppen[hash];
+                const termin = allTermine.find(t => t.id === assignments[hash]);
 
                 if (!gruppe || !termin) return;
 
@@ -1927,9 +1963,9 @@ END:VEVENT
             let csv = 'Kindname,Email,Datum,Uhrzeit,Dauer\n';
 
             // Iteriere über kinderGruppen statt assignments
-            Object.keys(assignments).forEach(kindname => {
-                const gruppe = window.kinderGruppen[kindname];
-                const termin = allTermine.find(t => t.id === assignments[kindname]);
+            Object.keys(assignments).forEach(hash => {
+                const gruppe = window.kinderGruppen[hash];
+                const termin = allTermine.find(t => t.id === assignments[hash]);
 
                 if (!gruppe || !termin) return;
 

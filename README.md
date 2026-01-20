@@ -14,6 +14,7 @@ Ein benutzerfreundliches Tool zur Koordination von Elterngesprächen. Lehrperson
   - Optionaler automatischer E-Mail-Versand (EmailJS)
   - E-Mail-Vorlagen und Kalender-Downloads (.ics)
   - CSV-Export für Mail-Merge
+  - **Datenschutz: AES-256 Verschlüsselung** für sensible Daten (Kindernamen, E-Mails)
 
 - **Für Eltern:**
   - Einfache Terminauswahl ohne Login
@@ -200,12 +201,17 @@ Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
 ```
 {
   termin_gruppe_id: string (UID des Lehrers)
-  kindname: string
-  email: string
+  kindname: string (veraltet, nur für Kompatibilität)
+  email: string (veraltet, nur für Kompatibilität)
+  kindname_encrypted: string (AES-256 verschlüsselter Kindname)
+  email_encrypted: string (AES-256 verschlüsselte E-Mail)
+  kindname_hash: string (SHA-256 Hash für Gruppierung)
   verfuegbare_termine: array (IDs der Termine)
   created_at: timestamp
 }
 ```
+
+**Hinweis:** Die Felder `kindname` und `email` bleiben für Rückwärtskompatibilität erhalten, werden aber von der neuen Version nicht mehr verwendet. Neue Einträge speichern nur die verschlüsselten Versionen.
 
 ### Collection: `zuteilungen`
 ```
@@ -230,6 +236,16 @@ Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
 }
 ```
 
+### Collection: `encryption_keys`
+```
+{
+  encryption_key: string (Base64-codierter AES-256 Schlüssel)
+  created_at: timestamp
+}
+```
+
+**Hinweis:** Document ID = Teacher UID. Jede Lehrperson hat einen eigenen Verschlüsselungskey.
+
 ## Sicherheit
 
 - **Authentication:** Nur registrierte Lehrpersonen können Termine erstellen und verwalten
@@ -237,6 +253,24 @@ Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
   - Lehrer können nur ihre eigenen Termine bearbeiten
   - Eltern können Antworten erstellen (ohne Login), aber nicht bearbeiten
   - Zuteilungen können nur von eingeloggten Lehrern erstellt werden
+- **Datenverschlüsselung:**
+  - Sensible Daten (Kindernamen und E-Mail-Adressen) werden **verschlüsselt** in Firestore gespeichert
+  - Verwendet AES-256 Verschlüsselung (client-seitig)
+  - Jede Lehrperson hat einen eigenen Verschlüsselungskey
+  - Verschlüsselungskeys werden automatisch bei der Registrierung generiert
+  - Für die Gruppierung von Antworten (z.B. getrennte Eltern) wird ein SHA-256 Hash verwendet
+  - Die verschlüsselten Daten können nur von der zuständigen Lehrperson entschlüsselt werden
+
+### Migration bestehender Daten
+
+Falls Sie das Tool bereits verwenden und auf die neue verschlüsselte Version upgraden:
+
+1. Loggen Sie sich als Lehrperson ein
+2. Öffnen Sie `migrate-data.html` in Ihrem Browser
+3. Klicken Sie auf "Migration starten"
+4. Das Tool verschlüsselt automatisch alle bestehenden Antworten
+
+**Hinweis:** Die Migration fügt verschlüsselte Felder hinzu, löscht aber die originalen Daten nicht. So bleibt die Kompatibilität erhalten.
 
 ## Technologie-Stack
 
