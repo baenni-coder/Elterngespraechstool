@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- CryptoJS für Verschlüsselung -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
     <style>
         * {
@@ -261,7 +263,10 @@
             btn.textContent = 'Wird angemeldet...';
 
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+
+                // Encryption Key generieren falls noch nicht vorhanden (für bestehende Accounts)
+                await crypto.getOrCreateEncryptionKey(userCredential.user.uid);
 
                 showMessage('✓ Erfolgreich angemeldet! Sie werden weitergeleitet...', 'success');
 
@@ -296,6 +301,20 @@
                         displayName: name
                     });
                 }
+
+                // Encryption Key generieren
+                await crypto.getOrCreateEncryptionKey(userCredential.user.uid);
+
+                // Settings initialisieren mit Lehrperson-Name
+                await db.collection('settings').doc(userCredential.user.uid).set({
+                    teacher_name: name || null,
+                    min_termine_anzahl: 3,
+                    auto_email_enabled: false,
+                    emailjs_service_id: '',
+                    emailjs_template_id: '',
+                    emailjs_public_key: '',
+                    updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
                 showMessage('✓ Konto erfolgreich erstellt! Sie können sich jetzt anmelden.', 'success');
 
