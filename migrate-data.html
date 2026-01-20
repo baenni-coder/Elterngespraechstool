@@ -280,21 +280,27 @@
             const div = document.createElement('div');
             div.className = 'success';
             div.innerHTML = `<strong>✓ Erfolg:</strong> ${message}`;
-            document.querySelector('.container').insertBefore(div, document.getElementById('status'));
+            const mainContent = document.getElementById('main-content');
+            const statusDiv = document.getElementById('status');
+            mainContent.insertBefore(div, statusDiv);
         }
 
         function showWarning(message) {
             const div = document.createElement('div');
             div.className = 'warning';
             div.innerHTML = `<strong>⚠ Warnung:</strong> ${message}`;
-            document.querySelector('.container').insertBefore(div, document.getElementById('status'));
+            const mainContent = document.getElementById('main-content');
+            const statusDiv = document.getElementById('status');
+            mainContent.insertBefore(div, statusDiv);
         }
 
         function showError(message) {
             const div = document.createElement('div');
             div.className = 'error';
             div.innerHTML = `<strong>✗ Fehler:</strong> ${message}`;
-            document.querySelector('.container').insertBefore(div, document.getElementById('status'));
+            const mainContent = document.getElementById('main-content');
+            const statusDiv = document.getElementById('status');
+            mainContent.insertBefore(div, statusDiv);
         }
     </script>
 </body>
