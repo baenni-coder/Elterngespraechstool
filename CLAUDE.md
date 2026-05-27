@@ -10,7 +10,7 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
 - Lehrpersonen erstellen Termine und verwalten Zuteilungen
 - Eltern wählen Verfügbarkeiten aus (ohne Login)
 - Automatische Berechnung gemeinsamer Termine bei getrennten Eltern
-- Optionaler automatischer E-Mail-Versand (EmailJS)
+- Optionaler automatischer E-Mail-Versand (Firebase "Trigger Email" Extension)
 - ICS-Kalender-Export und CSV-Export
 
 ## Technologie-Stack
@@ -20,7 +20,8 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
   - Firebase Authentication (E-Mail/Passwort) - nur für Lehrpersonen
   - Cloud Firestore (NoSQL Database)
   - Firebase Hosting (optional)
-- **Third-Party**: EmailJS für E-Mail-Versand (optional)
+  - Firebase Extension "Trigger Email from Firestore" (optional, für automatischen Versand)
+- **SMTP**: Beliebiger Anbieter via Extension - empfohlen: Hoststar/Hostpoint-Postfach (im Hosting bereits enthalten, keine Drittanbieter-Kosten)
 - **Locale**: Schweizer Deutsch (de-CH)
 
 ### Wichtige Dateien
@@ -89,14 +90,39 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
   teacher_name: string | null,      // Optional: Name der Lehrperson
   min_termine_anzahl: number,       // Mindestanzahl Termine (Standard: 3)
   auto_email_enabled: boolean,      // Auto-E-Mail aktiv?
-  emailjs_service_id: string,       // Optional
-  emailjs_template_id: string,      // Optional
-  emailjs_public_key: string,       // Optional
+  absender_email: string | null,    // Optional: eigene Absender-Adresse für E-Mails
   updated_at: timestamp
 }
 ```
 
 Document ID = User UID der Lehrperson
+
+#### Collection: `mail` (Versand-Warteschlange für Trigger Email Extension)
+```javascript
+{
+  to: string,                        // Empfänger-E-Mail
+  from: string,                      // Optional: "Name <adresse@domain.ch>" - sonst Extension-Default
+  replyTo: string,                   // Antwort-an Adresse
+  message: {
+    subject: string,
+    text: string,
+    attachments: [{
+      filename: string,              // z.B. "Elterngespraech_Anna_Mueller.ics"
+      content: string,               // ICS-Inhalt als String
+      contentType: string            // "text/calendar; charset=utf-8; method=PUBLISH"
+    }]
+  },
+  _meta: {                           // Eigene Metadaten zur Nachverfolgung
+    lehrer_uid: string,
+    termin_id: string,
+    antwort_id: string,
+    created_at: timestamp
+  },
+  delivery: { state, ... }           // Wird von der Extension nach Versand ergänzt
+}
+```
+
+**Wichtig**: Diese Collection wird ausschließlich von `sendAutomaticEmails()` geschrieben und von der Extension verarbeitet. Pro Elternteil wird **ein eigenes Dokument** erstellt (auch bei getrennten Eltern), damit jede:r Elternteil eine separate Mail erhält (DSGVO).
 
 ### 3. Getrennte Eltern - Schnittmengen-Logik
 
@@ -207,15 +233,17 @@ Dies ermöglicht die Gruppierung von getrennten Eltern unter dem gleichen Kindna
 
 ### 6. E-Mail-Versand
 
-**Automatisch** (optional, via EmailJS):
-- Aktivierung in Einstellungen
-- Wird nach `saveZuteilungen()` automatisch ausgeführt
-- Sendet E-Mail an **alle Elternteile** in einer Gruppe
-- Rate Limiting: 1 Sekunde zwischen E-Mails
+**Automatisch** (optional, via Firebase "Trigger Email" Extension):
+- Lehrperson aktiviert in den Einstellungen lediglich einen Toggle (+ optional eigene Absender-Adresse)
+- `sendAutomaticEmails()` schreibt nach `saveZuteilungen()` pro Elternteil ein Dokument in die `mail`-Collection
+- Die Extension liest neue Dokumente, versendet sie via SMTP (Hoststar/Hostpoint o.ä.) und schreibt den Status zurück (`delivery.state`)
+- ICS-Datei wird direkt als Attachment im Mail-Dokument mitgegeben (kein separater Download nötig)
+- Kein Client-seitiges Rate-Limiting mehr nötig - die Extension handhabt SMTP-Throttling
+- Setup muss einmalig durch den Projekt-Betreiber gemacht werden (siehe README, Abschnitt "Automatischer E-Mail-Versand")
 
-**Manuell** (immer verfügbar):
+**Manuell** (immer verfügbar, auch wenn Auto-Versand deaktiviert):
 - E-Mail-Vorlagen werden nach Zuteilung angezeigt
-- ICS-Dateien für jedes Elternteil
+- ICS-Dateien können einzeln heruntergeladen werden
 - CSV-Export für Mail-Merge
 
 ### 7. LocalStorage
@@ -261,9 +289,12 @@ elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
 5. Ruft `showEmailKalenderOptionen()` auf
 
 #### `sendAutomaticEmails()`
-- Iteriert über `assignments` (kindname → terminId)
-- Sendet E-Mail an **alle Elternteile** in jeder Gruppe
-- Gibt Status-Objekt zurück: `{ enabled, success, error }`
+- Liest Settings (`auto_email_enabled`, `absender_email`, `teacher_name`)
+- Iteriert über `assignments` (hash → terminId) und für jedes Elternteil in der Gruppe
+- Erstellt **pro Elternteil** ein Dokument in der `mail`-Collection mit Betreff, Text und ICS-Anhang
+- Wenn `absender_email` gesetzt: setzt `from` auf `"Name <absender_email>"`, sonst Extension-Default
+- Gibt Status-Objekt zurück: `{ enabled, success, error, generalError? }` (success = Anzahl eingereihter Mails, nicht versendeter)
+- **Hinweis**: Tatsächlicher Versand erfolgt asynchron durch die Extension - Erfolg = "in Warteschlange", nicht "zugestellt"
 
 #### `showEmailKalenderOptionen(emailResult)`
 - Zeigt E-Mail-Status an (wenn vorhanden)
@@ -312,6 +343,12 @@ match /settings/{userId} {
   allow read: if true; // Public für Elternformular
   allow write: if isOwner(userId);
 }
+
+match /mail/{mailId} {
+  allow read: if false;          // Nur Extension (Admin-SDK) liest
+  allow create: if isSignedIn(); // Lehrpersonen können Mails einreihen
+  allow update, delete: if false; // Extension updated mit Admin-Rechten
+}
 ```
 
 ## Bekannte Besonderheiten
@@ -350,11 +387,8 @@ if (snapshot.docs.length > 0) {
 ```
 Firestore wirft Fehler bei leeren Batches - immer prüfen!
 
-### 6. EmailJS Rate Limiting
-1 Sekunde Pause zwischen E-Mails:
-```javascript
-await new Promise(resolve => setTimeout(resolve, 1000));
-```
+### 6. Mail-Versand: Asynchrone Verarbeitung
+Der Auto-Versand schreibt nur in die `mail`-Collection - die eigentliche Zustellung erfolgt durch die Trigger-Email-Extension. `success`-Count in `sendAutomaticEmails()` bedeutet daher "in Warteschlange", nicht "zugestellt". Tatsächlicher Status: im Mail-Dokument unter `delivery.state` (`SUCCESS`, `ERROR`, `PROCESSING`, `RETRY`).
 
 ## Häufige Änderungsanfragen
 
@@ -370,9 +404,9 @@ await new Promise(resolve => setTimeout(resolve, 1000));
 3. In `lehrer-dashboard.html` → `loadAntworten()` anzeigen
 
 ### Feature: E-Mail-Template ändern
-1. In `showEmailKalenderOptionen()` den `emailText` anpassen
-2. In EmailJS Dashboard das Template aktualisieren
-3. In README.md die Template-Variablen dokumentieren
+1. In `sendAutomaticEmails()` Betreff/Text/Anhang anpassen (automatischer Versand)
+2. In `showEmailKalenderOptionen()` den `emailText` anpassen (manuelle Kopier-Vorlage)
+3. In README.md die Beschreibung aktualisieren
 
 ## Testing-Hinweise
 
@@ -409,9 +443,12 @@ await new Promise(resolve => setTimeout(resolve, 1000));
 
 ### Problem: E-Mails werden nicht versendet
 **Prüfen**:
-1. EmailJS Konfiguration in Settings korrekt?
-2. `window.kinderGruppen` existiert?
-3. Browser-Konsole für Fehler prüfen
+1. Ist die Firebase "Trigger Email" Extension installiert und SMTP korrekt konfiguriert?
+2. Werden `mail`-Dokumente in Firestore tatsächlich erstellt? (Console → Firestore → `mail`)
+3. Status pro Dokument unter `delivery.state` ansehen - bei `ERROR` ist `delivery.error` ausgefüllt
+4. Logs der Extension prüfen (Firebase Console → Extensions → Logs)
+5. SMTP-Limits des Anbieters erreicht (z.B. Hoststar: ~500/Tag)?
+6. `window.kinderGruppen` existiert clientseitig?
 
 ### Problem: Gemeinsame Termine werden nicht angezeigt
 **Prüfen**:
@@ -448,9 +485,11 @@ await new Promise(resolve => setTimeout(resolve, 1000));
 
 ⚠️ **Wichtig**: Niemals Firebase Config (`apiKey`, `projectId`, etc.) in diesem Dokument speichern!
 
-⚠️ **Wichtig**: EmailJS Keys sind client-side - keine sensitiven Daten im Template verwenden!
+⚠️ **Wichtig**: SMTP-Credentials werden nur in der Extension-Konfiguration (Server-Side) gespeichert - niemals im Client-Code!
 
 ⚠️ **Wichtig**: Firestore Rules regelmäßig überprüfen, besonders bei neuen Collections!
+
+⚠️ **Wichtig**: Budget-Alarm in der Firebase Console einrichten (CHF 5/Monat empfohlen) - schützt vor unerwarteten Kosten durch Bugs oder Missbrauch.
 
 ## Letzte Updates
 
@@ -460,6 +499,7 @@ await new Promise(resolve => setTimeout(resolve, 1000));
 - **2024**: Automatischer E-Mail-Versand (EmailJS) implementiert
 - **2024**: Lehrperson-Name in Settings hinzugefügt
 - **2024**: LocalStorage für letzten Link implementiert
+- **2026**: Umstellung des E-Mail-Versands von EmailJS auf Firebase "Trigger Email" Extension (SMTP via Hoststar/Hostpoint) - kein Konfigurationsaufwand mehr für Lehrpersonen, Mails kommen von eigener Domain, ICS direkt als Anhang
 
 ---
 

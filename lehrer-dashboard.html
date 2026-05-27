@@ -11,8 +11,6 @@
     <!-- CryptoJS für Verschlüsselung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
-    <!-- EmailJS SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -588,22 +586,17 @@
                             <span>Automatischer E-Mail-Versand aktivieren (optional)</span>
                         </label>
                         <p style="color: #666; font-size: 13px; margin-top: 8px; margin-bottom: 15px;">
-                            Wenn aktiviert, werden E-Mails automatisch nach dem Zuteilen versendet.<br>
-                            <strong>Setup erforderlich:</strong> Siehe README für Anleitung zur EmailJS-Konfiguration.
+                            Wenn aktiviert, werden E-Mails nach dem Zuteilen automatisch im Hintergrund versendet (inkl. Kalender-Datei als Anhang).
                         </p>
 
                         <div id="email-settings" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 6px;">
-                            <div class="form-group" style="margin-bottom: 15px;">
-                                <label style="font-size: 14px;">EmailJS Service ID</label>
-                                <input type="text" id="emailjs-service-id" placeholder="z.B. service_abc123" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 15px;">
-                                <label style="font-size: 14px;">EmailJS Template ID</label>
-                                <input type="text" id="emailjs-template-id" placeholder="z.B. template_xyz789" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
-                            </div>
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label style="font-size: 14px;">EmailJS Public Key</label>
-                                <input type="text" id="emailjs-public-key" placeholder="z.B. user_abc123xyz" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                                <label style="font-size: 14px;">Absender-E-Mail-Adresse (optional)</label>
+                                <input type="email" id="absender-email" placeholder="z.B. ihrname@schueu.ch" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                                <p style="color: #666; font-size: 12px; margin-top: 6px;">
+                                    Die Eltern sehen diese Adresse als Absender und können direkt darauf antworten.
+                                    Wenn leer, wird die zentral konfigurierte Standard-Adresse verwendet (Ihre Login-E-Mail dient dann als "Antwort an").
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -866,19 +859,18 @@
 
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFaq(this)">
-                            <span>Wie richte ich automatische E-Mails ein?</span>
+                            <span>Wie funktioniert der automatische E-Mail-Versand?</span>
                             <span class="faq-arrow">▼</span>
                         </div>
                         <div class="faq-answer">
                             <div class="faq-answer-content">
-                                <p>Der automatische E-Mail-Versand nutzt <strong>EmailJS</strong> (kostenlos für kleine Volumen):</p>
+                                <p>Der automatische E-Mail-Versand ist <strong>zentral eingerichtet</strong> - Sie müssen als Lehrperson nichts konfigurieren:</p>
                                 <ol>
-                                    <li>Erstellen Sie ein Konto auf <a href="https://www.emailjs.com" target="_blank" style="color: #667eea;">emailjs.com</a>.</li>
-                                    <li>Erstellen Sie einen E-Mail-Service und ein Template.</li>
-                                    <li>Kopieren Sie Service ID, Template ID und Public Key.</li>
-                                    <li>Aktivieren Sie "Automatischer E-Mail-Versand" in den Einstellungen und fügen Sie die IDs ein.</li>
+                                    <li>Setzen Sie das Häkchen bei "Automatischer E-Mail-Versand aktivieren" in den Einstellungen.</li>
+                                    <li>Geben Sie optional eine eigene Absender-Adresse an, sonst wird die zentrale Standard-Adresse verwendet.</li>
+                                    <li>Nach dem Speichern der Zuteilungen werden die E-Mails inkl. Kalender-Datei (.ics) im Hintergrund automatisch versendet.</li>
                                 </ol>
-                                <p style="margin-top: 10px;">Detaillierte Anleitung finden Sie in der README-Datei.</p>
+                                <p style="margin-top: 10px;">Falls Sie keine automatischen E-Mails wünschen, lassen Sie die Option deaktiviert - die E-Mail-Vorlagen zum manuellen Kopieren werden weiterhin angezeigt.</p>
                             </div>
                         </div>
                     </div>
@@ -1186,14 +1178,8 @@
                     document.getElementById('auto-email-enabled').checked = autoEmailEnabled;
                     document.getElementById('email-settings').style.display = autoEmailEnabled ? 'block' : 'none';
 
-                    if (settings.emailjs_service_id) {
-                        document.getElementById('emailjs-service-id').value = settings.emailjs_service_id;
-                    }
-                    if (settings.emailjs_template_id) {
-                        document.getElementById('emailjs-template-id').value = settings.emailjs_template_id;
-                    }
-                    if (settings.emailjs_public_key) {
-                        document.getElementById('emailjs-public-key').value = settings.emailjs_public_key;
+                    if (settings.absender_email) {
+                        document.getElementById('absender-email').value = settings.absender_email;
                     }
                 } else {
                     // Standardwerte setzen
@@ -1217,25 +1203,20 @@
 
             const teacherName = document.getElementById('teacher-name').value.trim();
             const autoEmailEnabled = document.getElementById('auto-email-enabled').checked;
+            const absenderEmail = document.getElementById('absender-email').value.trim();
+
+            if (absenderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(absenderEmail)) {
+                alert('Bitte geben Sie eine gültige Absender-E-Mail-Adresse ein oder lassen Sie das Feld leer.');
+                return;
+            }
+
             const settingsData = {
-                teacher_name: teacherName || null, // Speichere null wenn leer
+                teacher_name: teacherName || null,
                 min_termine_anzahl: minTermine,
                 auto_email_enabled: autoEmailEnabled,
+                absender_email: absenderEmail || null,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             };
-
-            // Speichere EmailJS Einstellungen nur wenn aktiviert
-            if (autoEmailEnabled) {
-                settingsData.emailjs_service_id = document.getElementById('emailjs-service-id').value.trim();
-                settingsData.emailjs_template_id = document.getElementById('emailjs-template-id').value.trim();
-                settingsData.emailjs_public_key = document.getElementById('emailjs-public-key').value.trim();
-
-                // Validiere EmailJS Felder
-                if (!settingsData.emailjs_service_id || !settingsData.emailjs_template_id || !settingsData.emailjs_public_key) {
-                    alert('Bitte füllen Sie alle EmailJS-Felder aus oder deaktivieren Sie den automatischen E-Mail-Versand.');
-                    return;
-                }
-            }
 
             try {
                 await db.collection('settings').doc(currentUser.uid).set(settingsData, { merge: true });
@@ -1702,22 +1683,16 @@
                 }
 
                 const settings = settingsDoc.data();
-                const { emailjs_service_id, emailjs_template_id, emailjs_public_key } = settings;
+                const absenderEmail = settings.absender_email || null;
+                const absenderName = settings.teacher_name || 'Elterngespräch';
+                const replyToEmail = absenderEmail || currentUser.email;
 
-                if (!emailjs_service_id || !emailjs_template_id || !emailjs_public_key) {
-                    console.error('EmailJS nicht korrekt konfiguriert');
-                    return { enabled: true, success: 0, error: 0, configError: true };
-                }
+                console.log('Erstelle Mail-Dokumente für Trigger Email Extension...');
 
-                // Initialisiere EmailJS
-                emailjs.init(emailjs_public_key);
-
-                console.log('Sende automatische E-Mails...');
-
-                let successCount = 0;
+                let queuedCount = 0;
                 let errorCount = 0;
 
-                // Sende E-Mail für jede Zuteilung (assignments enthält jetzt hash -> terminId)
+                // Pro Zuteilung (hash -> terminId): jedes Elternteil bekommt eine eigene Mail
                 for (const [hash, terminId] of Object.entries(assignments)) {
                     const gruppe = window.kinderGruppen[hash];
                     const termin = allTermine.find(t => t.id === terminId);
@@ -1732,33 +1707,63 @@
                         day: 'numeric'
                     });
 
-                    // Sende E-Mail an jedes Elternteil in der Gruppe
                     for (const antwort of gruppe.antworten) {
-                        // Template Parameter für EmailJS
-                        const templateParams = {
-                            to_email: antwort.email,
-                            to_name: antwort.kindname,
-                            termin_datum: formattedDate,
-                            termin_zeit: termin.zeit,
-                            termin_dauer: termin.dauer_minuten,
-                            lehrer_email: currentUser.email
+                        const subject = `Ihr Termin für das Elterngespräch: ${antwort.kindname}`;
+                        const text = `Guten Tag
+
+Hiermit bestätige ich den Termin für unser Elterngespräch:
+
+Kind: ${antwort.kindname}
+Datum: ${formattedDate}
+Uhrzeit: ${termin.zeit} Uhr
+Dauer: ${termin.dauer_minuten} Minuten
+
+Im Anhang finden Sie den Termin als Kalender-Datei (.ics), die Sie direkt in Ihren Kalender importieren können.
+
+Ich freue mich auf unser Gespräch.
+
+Mit freundlichen Grüssen
+${absenderName}`;
+
+                        const icsContent = generateICS(termin, antwort);
+                        const safeName = antwort.kindname.replace(/[^a-zA-Z0-9_-]+/g, '_');
+
+                        const mailDoc = {
+                            to: antwort.email,
+                            replyTo: replyToEmail,
+                            message: {
+                                subject: subject,
+                                text: text,
+                                attachments: [{
+                                    filename: `Elterngespraech_${safeName}.ics`,
+                                    content: icsContent,
+                                    contentType: 'text/calendar; charset=utf-8; method=PUBLISH'
+                                }]
+                            },
+                            _meta: {
+                                lehrer_uid: currentUser.uid,
+                                termin_id: termin.id,
+                                antwort_id: antwort.id,
+                                created_at: firebase.firestore.FieldValue.serverTimestamp()
+                            }
                         };
 
-                        try {
-                            await emailjs.send(emailjs_service_id, emailjs_template_id, templateParams);
-                            successCount++;
-                            console.log(`✓ E-Mail gesendet an ${antwort.email}`);
-                        } catch (error) {
-                            errorCount++;
-                            console.error(`✗ Fehler beim Senden an ${antwort.email}:`, error);
+                        if (absenderEmail) {
+                            mailDoc.from = `"${absenderName}" <${absenderEmail}>`;
                         }
 
-                        // Kleine Pause zwischen E-Mails (EmailJS Rate Limit)
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        try {
+                            await db.collection('mail').add(mailDoc);
+                            queuedCount++;
+                            console.log(`✓ Mail in Warteschlange für ${antwort.email}`);
+                        } catch (error) {
+                            errorCount++;
+                            console.error(`✗ Fehler beim Einreihen für ${antwort.email}:`, error);
+                        }
                     }
                 }
 
-                return { enabled: true, success: successCount, error: errorCount };
+                return { enabled: true, success: queuedCount, error: errorCount };
 
             } catch (error) {
                 console.error('Fehler beim automatischen E-Mail-Versand:', error);
@@ -1774,16 +1779,14 @@
 
             // Zeige E-Mail Status wenn Auto-E-Mail aktiviert war
             if (emailResult && emailResult.enabled) {
-                if (emailResult.configError) {
-                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ EmailJS nicht korrekt konfiguriert.</strong><br>Bitte überprüfen Sie Ihre E-Mail-Einstellungen.</div>';
-                } else if (emailResult.generalError) {
-                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Fehler beim E-Mail-Versand:</strong> ' + emailResult.generalError + '</div>';
+                if (emailResult.generalError) {
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Fehler beim Einreihen der E-Mails:</strong> ' + emailResult.generalError + '</div>';
                 } else if (emailResult.success > 0 && emailResult.error === 0) {
-                    html += '<div class="alert alert-success" style="margin-top: 10px;"><strong>✓ ' + emailResult.success + ' E-Mail(s) erfolgreich versendet!</strong></div>';
+                    html += '<div class="alert alert-success" style="margin-top: 10px;"><strong>✓ ' + emailResult.success + ' E-Mail(s) in die Versand-Warteschlange gestellt.</strong><br>Die Zustellung erfolgt im Hintergrund (üblicherweise innerhalb weniger Sekunden).</div>';
                 } else if (emailResult.success > 0 && emailResult.error > 0) {
-                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Teilerfolg:</strong> ' + emailResult.success + ' E-Mail(s) versendet, ' + emailResult.error + ' fehlgeschlagen. Bitte prüfen Sie die Konsole.</div>';
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Teilerfolg:</strong> ' + emailResult.success + ' E-Mail(s) eingereiht, ' + emailResult.error + ' fehlgeschlagen. Bitte prüfen Sie die Konsole.</div>';
                 } else if (emailResult.error > 0) {
-                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ E-Mail-Versand fehlgeschlagen:</strong> ' + emailResult.error + ' E-Mail(s) konnten nicht versendet werden. Bitte prüfen Sie die Konsole.</div>';
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ E-Mail-Einreihung fehlgeschlagen:</strong> ' + emailResult.error + ' E-Mail(s) konnten nicht erstellt werden. Bitte prüfen Sie die Konsole.</div>';
                 }
             }
 
