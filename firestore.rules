@@ -51,5 +51,14 @@ service cloud.firestore {
       allow read: if true; // Öffentlich lesbar für Eltern-Formular
       allow write: if isOwner(userId);
     }
+
+    // Mail-Queue: Wird von der Firebase "Trigger Email" Extension verarbeitet.
+    // Authentifizierte Lehrpersonen können Mail-Dokumente erstellen,
+    // die Extension liest/schreibt mit Admin-Rechten (umgeht diese Rules).
+    match /mail/{mailId} {
+      allow read: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
   }
 }

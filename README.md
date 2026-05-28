@@ -11,7 +11,7 @@ Ein benutzerfreundliches Tool zur Koordination von Elterngesprächen. Lehrperson
   - Eltern-Antworten einsehen (gruppiert nach Kindname)
   - Gemeinsame Termine bei getrennten Eltern (automatische Schnittmenge)
   - Termine intelligent zuteilen
-  - Optionaler automatischer E-Mail-Versand (EmailJS)
+  - Optionaler automatischer E-Mail-Versand (via Firebase "Trigger Email" Extension, z.B. mit Hoststar-SMTP)
   - E-Mail-Vorlagen und Kalender-Downloads (.ics)
   - CSV-Export für Mail-Merge
   - **Datenschutz: AES-256 Verschlüsselung** für sensible Daten (Kindernamen, E-Mails)
@@ -229,10 +229,25 @@ Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
   teacher_name: string (optional, Name der Lehrperson)
   min_termine_anzahl: number (Mindestanzahl Termine)
   auto_email_enabled: boolean (Auto-E-Mail aktiv?)
-  emailjs_service_id: string (optional, für E-Mail-Versand)
-  emailjs_template_id: string (optional, für E-Mail-Versand)
-  emailjs_public_key: string (optional, für E-Mail-Versand)
+  absender_email: string (optional, eigene Absender-Adresse für E-Mails)
   updated_at: timestamp
+}
+```
+
+### Collection: `mail` (Versand-Warteschlange)
+Wird von der Firebase "Trigger Email" Extension verarbeitet und nach erfolgreichem Versand automatisch ergänzt:
+```
+{
+  to: string | string[]            // Empfänger
+  from: string (optional)          // Absender (sonst Extension-Default)
+  replyTo: string                  // Antwort-an
+  message: {
+    subject: string
+    text: string
+    attachments: [{ filename, content, contentType }]
+  }
+  _meta: { lehrer_uid, termin_id, antwort_id, created_at }
+  delivery: { state, ... }         // von der Extension ergänzt
 }
 ```
 
@@ -282,89 +297,63 @@ Falls Sie das Tool bereits verwenden und auf die neue verschlüsselte Version up
 
 ## Automatischer E-Mail-Versand (Optional)
 
-Das Tool unterstützt optional automatischen E-Mail-Versand nach dem Zuteilen der Termine über **EmailJS**.
+Das Tool nutzt die offizielle **Firebase "Trigger Email" Extension** für den automatischen
+E-Mail-Versand. Lehrpersonen müssen nichts mehr konfigurieren - das Setup erfolgt einmalig
+zentral durch den Betreiber.
 
-### EmailJS Setup
+Der Code schreibt nach jeder Zuteilung Mail-Dokumente in die Firestore-Collection `mail`.
+Die Extension versendet sie im Hintergrund via beliebigem SMTP-Server (empfohlen: das
+Postfach des eigenen Web-Hosters, z.B. Hoststar / Hostpoint).
 
-1. **Kostenloses Konto erstellen:**
-   - Gehe zu [https://www.emailjs.com/](https://www.emailjs.com/)
-   - Erstelle ein kostenloses Konto (200 E-Mails/Monat)
+### Einmaliges Setup (durch Betreiber)
 
-2. **E-Mail Service verbinden:**
-   - Im Dashboard: Gehe zu **Email Services** > **Add New Service**
-   - Wähle deinen E-Mail-Provider (Gmail, Outlook, etc.)
-   - Folge den Anweisungen zur Verbindung
+1. **Firebase-Projekt auf Blaze-Plan upgraden** (Pay-as-you-go; bei Schul-Volumen
+   praktisch kostenlos, da Cloud-Functions-Free-Tier 2 Mio. Calls/Monat umfasst).
 
-3. **E-Mail Template erstellen:**
-   - Gehe zu **Email Templates** > **Create New Template**
-   - Verwende folgende Template-Variablen:
-     ```
-     Betreff: Termin für Elterngespräch - {{to_name}}
+2. **SMTP-Postfach bereitstellen** - z.B. bei Hoststar im Control Panel ein Postfach
+   wie `elterngespraech@deinedomain.ch` anlegen. SMTP-Daten von Hostpoint:
+   - Server: `asmtp.mail.hostpoint.ch`
+   - Port: `465` (SSL/TLS)
+   - User: volle E-Mail-Adresse, Passwort: Postfach-Passwort
 
-     Guten Tag
+3. **Extension installieren** über Firebase Console → Extensions → Suche
+   "Trigger Email from Firestore" (`firebase/firestore-send-email`). Konfiguration:
+   - **Collection path:** `mail`
+   - **SMTP connection URI:**
+     `smtps://NAME%40DOMAIN.CH:PASSWORT@asmtp.mail.hostpoint.ch:465`
+     (das `@` im Username als `%40` URL-encoden)
+   - **Default FROM address:** `Elterngespräch <elterngespraech@deinedomain.ch>`
+   - **Default REPLY-TO address:** leer lassen (wird pro Mail gesetzt)
 
-     Hiermit bestätige ich den Termin für unser Elterngespräch:
+4. **Firestore-Rules deployen** (siehe `firestore.rules`) - die `mail`-Collection
+   muss für authentifizierte User schreibbar sein:
+   ```
+   firebase deploy --only firestore:rules
+   ```
 
-     Kind: {{to_name}}
-     Datum: {{termin_datum}}
-     Uhrzeit: {{termin_zeit}} Uhr
-     Dauer: {{termin_dauer}} Minuten
+5. **Budget-Alarm einrichten** (Firebase Console → Budgets) - empfohlen CHF 5/Monat,
+   schützt vor unerwartet hoher Nutzung.
 
-     Ich freue mich auf unser Gespräch.
+### Versand-Limits (Hoststar/Hostpoint typisch)
 
-     Mit freundlichen Grüssen
-     {{lehrer_email}}
-     ```
-   - Speichere das Template und notiere die **Template ID**
+- ~500 Mails/Tag pro Postfach
+- ~50 Empfänger pro Mail
+- Für eine Schule mit ~25 Familien × 2 Runden/Jahr (~50 Mails/Jahr) reicht das weit aus.
 
-4. **API Keys holen:**
-   - Gehe zu **Account** > **General**
-   - Kopiere deine **Public Key** (user_...)
-   - Notiere die **Service ID** (service_...)
+### Nutzung als Lehrperson
 
-5. **Im Lehrer-Dashboard konfigurieren:**
-   - Logge dich ein
-   - Tab "Meine Termine" > Einstellungen
-   - Aktiviere "Automatischer E-Mail-Versand"
-   - Trage ein:
-     - EmailJS Service ID
-     - EmailJS Template ID
-     - EmailJS Public Key
-   - Klicke auf "Speichern"
-
-### E-Mail Template Variablen
-
-Das System sendet folgende Variablen an EmailJS:
-
-| Variable | Beschreibung |
-|----------|--------------|
-| `to_email` | E-Mail-Adresse der Eltern |
-| `to_name` | Name des Kindes |
-| `termin_datum` | Formatiertes Datum (z.B. "Montag, 15. Januar 2024") |
-| `termin_zeit` | Uhrzeit (z.B. "14:30") |
-| `termin_dauer` | Dauer in Minuten (z.B. "30") |
-| `lehrer_email` | Deine E-Mail-Adresse |
-
-### Verwendung
-
-Nach dem Setup werden E-Mails automatisch versendet, wenn du:
-1. Termine zuteilst (Tab "Zuteilung")
-2. Auf "Zuteilungen speichern" klickst
-3. Der automatische E-Mail-Versand aktiviert ist
-
-Du siehst eine Erfolgsmeldung mit der Anzahl versendeter E-Mails.
-
-### Kosten
-
-- EmailJS Free: 200 E-Mails/Monat kostenlos
-- Für mehr E-Mails: Kostenpflichtige Pläne ab $7/Monat
+1. Im Dashboard unter Einstellungen die Option **"Automatischer E-Mail-Versand aktivieren"** anhaken.
+2. Optional: eigene **Absender-E-Mail-Adresse** eintragen (Eltern sehen diese als Absender).
+   Wenn leer, wird der Default aus der Extension-Konfiguration verwendet, und die Login-E-Mail
+   der Lehrperson dient als "Antwort an".
+3. Nach dem Speichern der Zuteilungen werden die E-Mails inkl. ICS-Anhang automatisch eingereiht.
 
 ### Alternative: Manuelle E-Mails
 
-Wenn du keinen automatischen Versand möchtest:
+Wenn die Option deaktiviert ist:
 - E-Mail-Vorlagen sind weiterhin verfügbar
 - Kopiere den Text und sende manuell
-- Oder verwende mailto-Links aus den E-Mail-Vorlagen
+- ICS-Dateien können einzeln heruntergeladen werden
 
 ## Troubleshooting
 
