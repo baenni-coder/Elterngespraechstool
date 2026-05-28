@@ -229,7 +229,7 @@ Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
   teacher_name: string (optional, Name der Lehrperson)
   min_termine_anzahl: number (Mindestanzahl Termine)
   auto_email_enabled: boolean (Auto-E-Mail aktiv?)
-  absender_email: string (optional, eigene Absender-Adresse für E-Mails)
+  kontakt_email: string (optional, Reply-To-Adresse für Eltern-Antworten)
   updated_at: timestamp
 }
 ```
@@ -343,10 +343,26 @@ Postfach des eigenen Web-Hosters, z.B. Hoststar / Hostpoint).
 ### Nutzung als Lehrperson
 
 1. Im Dashboard unter Einstellungen die Option **"Automatischer E-Mail-Versand aktivieren"** anhaken.
-2. Optional: eigene **Absender-E-Mail-Adresse** eintragen (Eltern sehen diese als Absender).
-   Wenn leer, wird der Default aus der Extension-Konfiguration verwendet, und die Login-E-Mail
-   der Lehrperson dient als "Antwort an".
-3. Nach dem Speichern der Zuteilungen werden die E-Mails inkl. ICS-Anhang automatisch eingereiht.
+2. Optional: eine **Kontakt-E-Mail für Eltern-Rückfragen** eintragen. Antworten der Eltern
+   landen dann an dieser Adresse (`Reply-To`). Wenn leer, wird die Login-E-Mail der Lehrperson
+   verwendet.
+3. Der **angezeigte Absender** ist immer die zentral konfigurierte Schul-Adresse - das ist für
+   zuverlässige Zustellbarkeit nötig (SPF/DKIM gelten nur für diese Domain). Eltern erkennen
+   die Lehrperson am Namen in der Mail-Anzeige sowie an der Signatur im Text.
+4. Nach dem Speichern der Zuteilungen werden die E-Mails inkl. ICS-Anhang automatisch eingereiht.
+
+### DNS-Einträge (einmalig durch Betreiber)
+
+Damit Mails nicht im Spam landen, müssen auf der Versand-Domain (z.B. `schueu.ch`) drei
+DNS-Records gesetzt sein:
+
+| Typ | Name | Wert | Zweck |
+|---|---|---|---|
+| TXT | `@` | `v=spf1 a mx ip4:<MAILSERVER-IP> ~all` | SPF: erlaubt dem Hoster, im Namen der Domain zu senden |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:postmaster@<DOMAIN>` | DMARC: Reporting-Policy |
+| (DKIM aktivieren im Hoster Control Panel) | | | DKIM: Signatur für Authentizität |
+
+Verifizieren mit https://www.mail-tester.com - Ziel: 10/10.
 
 ### Alternative: Manuelle E-Mails
 

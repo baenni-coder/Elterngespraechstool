@@ -591,11 +591,13 @@
 
                         <div id="email-settings" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 6px;">
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label style="font-size: 14px;">Absender-E-Mail-Adresse (optional)</label>
-                                <input type="email" id="absender-email" placeholder="z.B. ihrname@schueu.ch" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                                <label style="font-size: 14px;">Kontakt-E-Mail für Eltern-Rückfragen (optional)</label>
+                                <input type="email" id="kontakt-email" placeholder="z.B. frau.mueller@schule.ch" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
                                 <p style="color: #666; font-size: 12px; margin-top: 6px;">
-                                    Die Eltern sehen diese Adresse als Absender und können direkt darauf antworten.
-                                    Wenn leer, wird die zentral konfigurierte Standard-Adresse verwendet (Ihre Login-E-Mail dient dann als "Antwort an").
+                                    Wenn Eltern auf die Termin-Bestätigung antworten, landet die Nachricht an dieser Adresse.
+                                    Wenn leer, wird Ihre Login-E-Mail verwendet.
+                                    <br><br>
+                                    <strong>Hinweis:</strong> Der angezeigte Absender ist immer die zentrale Schul-Adresse - das ist technisch notwendig für die zuverlässige Zustellung (Spam-Schutz).
                                 </p>
                             </div>
                         </div>
@@ -1178,8 +1180,10 @@
                     document.getElementById('auto-email-enabled').checked = autoEmailEnabled;
                     document.getElementById('email-settings').style.display = autoEmailEnabled ? 'block' : 'none';
 
-                    if (settings.absender_email) {
-                        document.getElementById('absender-email').value = settings.absender_email;
+                    // Lade Kontakt-E-Mail (Fallback auf alten Feldnamen für Abwärtskompatibilität)
+                    const kontaktEmail = settings.kontakt_email || settings.absender_email;
+                    if (kontaktEmail) {
+                        document.getElementById('kontakt-email').value = kontaktEmail;
                     }
                 } else {
                     // Standardwerte setzen
@@ -1203,10 +1207,10 @@
 
             const teacherName = document.getElementById('teacher-name').value.trim();
             const autoEmailEnabled = document.getElementById('auto-email-enabled').checked;
-            const absenderEmail = document.getElementById('absender-email').value.trim();
+            const kontaktEmail = document.getElementById('kontakt-email').value.trim();
 
-            if (absenderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(absenderEmail)) {
-                alert('Bitte geben Sie eine gültige Absender-E-Mail-Adresse ein oder lassen Sie das Feld leer.');
+            if (kontaktEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(kontaktEmail)) {
+                alert('Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein oder lassen Sie das Feld leer.');
                 return;
             }
 
@@ -1214,7 +1218,8 @@
                 teacher_name: teacherName || null,
                 min_termine_anzahl: minTermine,
                 auto_email_enabled: autoEmailEnabled,
-                absender_email: absenderEmail || null,
+                kontakt_email: kontaktEmail || null,
+                absender_email: firebase.firestore.FieldValue.delete(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             };
 
@@ -1683,9 +1688,10 @@
                 }
 
                 const settings = settingsDoc.data();
-                const absenderEmail = settings.absender_email || null;
+                // Reply-To: persönliche Adresse der Lehrperson (Eltern-Antworten landen dort).
+                // Backward-Compat: alter Feldname absender_email wird noch berücksichtigt.
+                const replyToEmail = settings.kontakt_email || settings.absender_email || currentUser.email;
                 const absenderName = settings.teacher_name || 'Elterngespräch';
-                const replyToEmail = absenderEmail || currentUser.email;
 
                 console.log('Erstelle Mail-Dokumente für Trigger Email Extension...');
 
@@ -1747,10 +1753,6 @@ ${absenderName}`;
                                 created_at: firebase.firestore.FieldValue.serverTimestamp()
                             }
                         };
-
-                        if (absenderEmail) {
-                            mailDoc.from = `"${absenderName}" <${absenderEmail}>`;
-                        }
 
                         try {
                             await db.collection('mail').add(mailDoc);
