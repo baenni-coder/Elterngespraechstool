@@ -90,10 +90,15 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
   teacher_name: string | null,      // Optional: Name der Lehrperson
   min_termine_anzahl: number,       // Mindestanzahl Termine (Standard: 3)
   auto_email_enabled: boolean,      // Auto-E-Mail aktiv?
-  absender_email: string | null,    // Optional: eigene Absender-Adresse für E-Mails
+  kontakt_email: string | null,     // Optional: Reply-To-Adresse für Eltern-Rückfragen
+                                    // (NICHT als From verwenden - sonst SPF/DKIM-Fail!)
   updated_at: timestamp
 }
 ```
+
+**Migrations-Hinweis**: Vor 2026-05 hieß das Feld `absender_email` und wurde fälschlicherweise
+als `From` verwendet. `loadSettings()` liest beide Namen als Fallback, `saveSettings()`
+löscht das alte Feld automatisch beim nächsten Speichern.
 
 Document ID = User UID der Lehrperson
 
@@ -289,10 +294,13 @@ elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
 5. Ruft `showEmailKalenderOptionen()` auf
 
 #### `sendAutomaticEmails()`
-- Liest Settings (`auto_email_enabled`, `absender_email`, `teacher_name`)
+- Liest Settings (`auto_email_enabled`, `kontakt_email`, `teacher_name`)
 - Iteriert über `assignments` (hash → terminId) und für jedes Elternteil in der Gruppe
 - Erstellt **pro Elternteil** ein Dokument in der `mail`-Collection mit Betreff, Text und ICS-Anhang
-- Wenn `absender_email` gesetzt: setzt `from` auf `"Name <absender_email>"`, sonst Extension-Default
+- Setzt **nur** `replyTo` (= `kontakt_email` oder Login-E-Mail), niemals `from`!
+  Der `from` wird ausschließlich vom Extension-Default befüllt - das ist die einzige Adresse,
+  für die SPF/DKIM bei der Versand-Domain gelten. Würde `from` auf eine andere Domain zeigen,
+  würden strenge Empfänger (Gmail) die Mail blockieren.
 - Gibt Status-Objekt zurück: `{ enabled, success, error, generalError? }` (success = Anzahl eingereihter Mails, nicht versendeter)
 - **Hinweis**: Tatsächlicher Versand erfolgt asynchron durch die Extension - Erfolg = "in Warteschlange", nicht "zugestellt"
 
