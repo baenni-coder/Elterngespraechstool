@@ -89,6 +89,8 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
 {
   teacher_name: string | null,      // Optional: Name der Lehrperson
   min_termine_anzahl: number,       // Mindestanzahl Termine (Standard: 3)
+  standard_dauer_minuten: number,   // Standardgesprächsdauer in Minuten (Standard: 30)
+                                    // Wird im Termin-Erstellungs-Formular vorausgefüllt
   auto_email_enabled: boolean,      // Auto-E-Mail aktiv?
   kontakt_email: string | null,     // Optional: Reply-To-Adresse für Eltern-Rückfragen
                                     // (NICHT als From verwenden - sonst SPF/DKIM-Fail!)

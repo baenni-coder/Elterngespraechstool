@@ -227,7 +227,8 @@ Wenn beide Elternteile unabhängig voneinander das Formular ausfüllen:
 ```
 {
   teacher_name: string (optional, Name der Lehrperson)
-  min_termine_anzahl: number (Mindestanzahl Termine)
+  min_termine_anzahl: number (Mindestanzahl Termine, Default: 3)
+  standard_dauer_minuten: number (Standardgesprächsdauer in Min., Default: 30)
   auto_email_enabled: boolean (Auto-E-Mail aktiv?)
   kontakt_email: string (optional, Reply-To-Adresse für Eltern-Antworten)
   updated_at: timestamp
