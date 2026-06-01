@@ -579,6 +579,15 @@
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
 
+                    <!-- Standard-Gesprächsdauer -->
+                    <div class="form-group">
+                        <label>Standardgesprächsdauer (Minuten)</label>
+                        <input type="number" id="standard-dauer" min="5" max="120" value="30" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Wird beim Erstellen neuer Termine automatisch vorausgefüllt. Sie können den Wert bei jedem einzelnen Termin überschreiben.</p>
+                    </div>
+
+                    <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
+
                     <!-- E-Mail Einstellungen -->
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
@@ -1111,8 +1120,9 @@
 
                 showMessage('termine', '✓ Termin erfolgreich erstellt!', 'success');
 
-                // Formular zurücksetzen
+                // Formular zurücksetzen, Dauer aber auf gespeicherten Standardwert setzen
                 document.getElementById('termin-form').reset();
+                document.getElementById('termin-dauer').value = document.getElementById('standard-dauer').value || 30;
 
                 // Liste neu laden
                 loadTermine();
@@ -1207,6 +1217,11 @@
                     // Mindestanzahl Termine
                     document.getElementById('min-termine').value = settings.min_termine_anzahl || 3;
 
+                    // Standard-Gesprächsdauer (auch im Termin-Erstellungs-Formular vorausfüllen)
+                    const standardDauer = settings.standard_dauer_minuten || 30;
+                    document.getElementById('standard-dauer').value = standardDauer;
+                    document.getElementById('termin-dauer').value = standardDauer;
+
                     // E-Mail Einstellungen
                     const autoEmailEnabled = settings.auto_email_enabled || false;
                     document.getElementById('auto-email-enabled').checked = autoEmailEnabled;
@@ -1220,20 +1235,29 @@
                 } else {
                     // Standardwerte setzen
                     document.getElementById('min-termine').value = 3;
+                    document.getElementById('standard-dauer').value = 30;
+                    document.getElementById('termin-dauer').value = 30;
                     document.getElementById('auto-email-enabled').checked = false;
                     document.getElementById('email-settings').style.display = 'none';
                 }
             } catch (error) {
                 console.error('Fehler beim Laden der Einstellungen:', error);
                 document.getElementById('min-termine').value = 3;
+                document.getElementById('standard-dauer').value = 30;
             }
         }
 
         async function saveSettings() {
             const minTermine = parseInt(document.getElementById('min-termine').value);
+            const standardDauer = parseInt(document.getElementById('standard-dauer').value);
 
             if (minTermine < 1 || minTermine > 10) {
-                alert('Bitte geben Sie eine Zahl zwischen 1 und 10 ein.');
+                alert('Bitte geben Sie für die Mindestanzahl Termine eine Zahl zwischen 1 und 10 ein.');
+                return;
+            }
+
+            if (isNaN(standardDauer) || standardDauer < 5 || standardDauer > 120) {
+                alert('Bitte geben Sie für die Standardgesprächsdauer eine Zahl zwischen 5 und 120 Minuten ein.');
                 return;
             }
 
@@ -1249,6 +1273,7 @@
             const settingsData = {
                 teacher_name: teacherName || null,
                 min_termine_anzahl: minTermine,
+                standard_dauer_minuten: standardDauer,
                 auto_email_enabled: autoEmailEnabled,
                 kontakt_email: kontaktEmail || null,
                 absender_email: firebase.firestore.FieldValue.delete(),
@@ -1257,6 +1282,9 @@
 
             try {
                 await db.collection('settings').doc(currentUser.uid).set(settingsData, { merge: true });
+
+                // Termin-Formular auf neuen Standardwert setzen (nur wenn Lehrperson nichts anderes eingegeben hat)
+                document.getElementById('termin-dauer').value = standardDauer;
 
                 showMessage('termine', '✓ Einstellungen erfolgreich gespeichert!', 'success');
             } catch (error) {

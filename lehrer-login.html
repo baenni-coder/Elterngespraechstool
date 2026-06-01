@@ -314,6 +314,7 @@
                 await db.collection('settings').doc(userCredential.user.uid).set({
                     teacher_name: name || null,
                     min_termine_anzahl: 3,
+                    standard_dauer_minuten: 30,
                     auto_email_enabled: false,
                     kontakt_email: null,
                     updated_at: firebase.firestore.FieldValue.serverTimestamp()
