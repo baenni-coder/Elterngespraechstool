@@ -21,7 +21,7 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
   - Cloud Firestore (NoSQL Database)
   - Firebase Hosting (optional)
   - Firebase Extension "Trigger Email from Firestore" (optional, für automatischen Versand)
-- **SMTP**: Beliebiger Anbieter via Extension - empfohlen: Hoststar/Hostpoint-Postfach (im Hosting bereits enthalten, keine Drittanbieter-Kosten)
+- **SMTP**: Beliebiger Anbieter via Extension - empfohlen: Hoststar-Postfach (im Hosting bereits enthalten, keine Drittanbieter-Kosten)
 - **Locale**: Schweizer Deutsch (de-CH)
 
 ### Wichtige Dateien
@@ -241,7 +241,7 @@ Dies ermöglicht die Gruppierung von getrennten Eltern unter dem gleichen Kindna
 **Automatisch** (optional, via Firebase "Trigger Email" Extension):
 - Lehrperson aktiviert in den Einstellungen lediglich einen Toggle (+ optional eigene Absender-Adresse)
 - `sendAutomaticEmails()` schreibt nach `saveZuteilungen()` pro Elternteil ein Dokument in die `mail`-Collection
-- Die Extension liest neue Dokumente, versendet sie via SMTP (Hoststar/Hostpoint o.ä.) und schreibt den Status zurück (`delivery.state`)
+- Die Extension liest neue Dokumente, versendet sie via SMTP (Hoststar o.ä.) und schreibt den Status zurück (`delivery.state`)
 - ICS-Datei wird direkt als Attachment im Mail-Dokument mitgegeben (kein separater Download nötig)
 - Kein Client-seitiges Rate-Limiting mehr nötig - die Extension handhabt SMTP-Throttling
 - Setup muss einmalig durch den Projekt-Betreiber gemacht werden (siehe README, Abschnitt "Automatischer E-Mail-Versand")
@@ -516,7 +516,7 @@ Damit die Zählung funktioniert, hat die `mail`-Collection in den Firestore-Rule
 - **2024**: Automatischer E-Mail-Versand (EmailJS) implementiert
 - **2024**: Lehrperson-Name in Settings hinzugefügt
 - **2024**: LocalStorage für letzten Link implementiert
-- **2026**: Umstellung des E-Mail-Versands von EmailJS auf Firebase "Trigger Email" Extension (SMTP via Hoststar/Hostpoint) - kein Konfigurationsaufwand mehr für Lehrpersonen, Mails kommen von eigener Domain, ICS direkt als Anhang
+- **2026**: Umstellung des E-Mail-Versands von EmailJS auf Firebase "Trigger Email" Extension (SMTP via Hoststar) - kein Konfigurationsaufwand mehr für Lehrpersonen, Mails kommen von eigener Domain, ICS direkt als Anhang
 
 ---
 
