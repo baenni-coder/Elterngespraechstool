@@ -635,13 +635,16 @@
             <div id="tab-zuteilung" class="tab-content">
                 <h2>Termine zuteilen</h2>
                 <p style="color: #666; margin-bottom: 20px;">Weisen Sie jedem Termin die gewünschten Eltern zu.</p>
-                
+
                 <div class="alert alert-info">
                     <strong>Anleitung:</strong> Klicken Sie auf ein Kind, um es einem Termin zuzuteilen. Bereits zugeteilte Kinder werden bei anderen Terminen ausgegraut.
                 </div>
-                
+
+                <!-- Mail-Versand-Status (sichtbar wenn Auto-Mail aktiv) -->
+                <div id="mail-rate-status" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
+
                 <div id="zuteilungs-area"></div>
-                
+
                 <button class="btn btn-success" id="save-zuteilungen-btn" onclick="saveZuteilungen()" style="margin-top: 20px;">✓ Zuteilungen speichern</button>
                 
                 <div id="zuteilung-message"></div>
@@ -879,6 +882,24 @@
 
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was bedeutet die Anzeige "📧 Mail-Versand: X/100 in letzter Stunde"?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Unser SMTP-Server (Hoststar) erlaubt maximal <strong>100 ausgehende Mails pro Stunde</strong> pro Postfach. Damit Sie nicht versehentlich an dieses Limit stoßen, zeigen wir im Zuteilung-Tab an, wie viele Mails bereits versendet wurden und wie viele Sie gerade dazu einreihen würden.</p>
+                                <p style="margin-top: 10px;"><strong>Was tun, wenn das Limit zu knapp wird?</strong></p>
+                                <ul>
+                                    <li><strong>Mit Kolleg:innen koordinieren:</strong> Versand zeitlich verteilen (mehrere Klassen in derselben Stunde gleichzeitig zuzuteilen ist ungünstig).</li>
+                                    <li><strong>Limit temporär erhöhen:</strong> Im Hoststar Control Panel das Postfach öffnen → "Mail-Limit-Rate" → "Mail-Limit-Rate erhöhen" (24h gültig).</li>
+                                    <li><strong>Trotzdem senden:</strong> Mails über dem Limit werden vom Server temporär blockiert - die Versand-Extension wiederholt sie automatisch, die Zustellung kann sich aber um 1-2 Stunden verzögern. Eltern merken davon nichts außer einer kleinen Verzögerung.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
                             <span>Was sind ICS-Dateien und wie nutze ich sie?</span>
                             <span class="faq-arrow">▼</span>
                         </div>
@@ -1013,6 +1034,12 @@
         let mergeMode = false; // Merge-Modus aktiv?
         let selectedForMerge = []; // Array von ausgewählten Kindnamen für Merge
 
+        // Hoststar erlaubt max. 100 ausgehende Mails pro Stunde pro Postfach.
+        // Bei Überschreitung blockt der SMTP-Server temporär (die Extension retry'ed automatisch,
+        // aber Zustellung verzögert sich um Stunden). Werte zur Schwellenwertbestimmung im Dashboard.
+        const MAIL_LIMIT_PER_HOUR = 100;
+        const MAIL_WARN_THRESHOLD = 90; // ab hier Vorwarnung
+
         // Beim Laden prüfen ob eingeloggt
         window.onload = async () => {
             currentUser = await helpers.checkAuth();
@@ -1053,6 +1080,7 @@
             // Wenn Zuteilung geöffnet wird, lade die Daten
             if (tabName === 'zuteilung') {
                 loadZuteilungsView();
+                updateMailRateStatus();
             }
         }
         
@@ -1543,6 +1571,7 @@
                                     assignments[hash] = termin.id;
                                 }
                                 renderZuteilungsArea();
+                                updateMailRateStatus();
                             }
                         };
 
@@ -1560,6 +1589,39 @@
             if (Object.keys(assignments).length === 0) {
                 alert('Bitte teilen Sie mindestens einem Elternpaar einen Termin zu.');
                 return;
+            }
+
+            // Prüfe Hoststar-Versandlimit, wenn Auto-Mail aktiviert ist
+            const preCheckSettings = await db.collection('settings').doc(currentUser.uid).get();
+            if (preCheckSettings.exists && preCheckSettings.data().auto_email_enabled) {
+                const recentCount = await countRecentMails();
+                const toSend = countMailsToSend();
+                if (recentCount !== null && recentCount + toSend > MAIL_LIMIT_PER_HOUR) {
+                    const proceed = confirm(
+                        `⛔ Versandlimit-Warnung\n\n` +
+                        `In der letzten Stunde wurden bereits ${recentCount} Mails eingereiht.\n` +
+                        `Mit dieser Aktion kämen ${toSend} weitere dazu (Total: ${recentCount + toSend}).\n\n` +
+                        `Hoststar erlaubt maximal ${MAIL_LIMIT_PER_HOUR} Mails pro Stunde. ` +
+                        `Mails über dem Limit werden vom SMTP-Server temporär blockiert - ` +
+                        `die Extension wiederholt sie automatisch, die Zustellung kann sich aber ` +
+                        `um 1-2 Stunden verzögern.\n\n` +
+                        `Möglichkeiten:\n` +
+                        `• Trotzdem speichern (Mails werden gestaffelt zugestellt)\n` +
+                        `• Abbrechen und Limit bei Hoststar temporär erhöhen ` +
+                        `(Control Panel → Postfach → "Mail-Limit-Rate erhöhen", 24h gültig)\n` +
+                        `• Abbrechen und mit Kolleg:innen koordinieren\n\n` +
+                        `Trotzdem fortfahren?`
+                    );
+                    if (!proceed) return;
+                } else if (recentCount !== null && recentCount + toSend >= MAIL_WARN_THRESHOLD) {
+                    const proceed = confirm(
+                        `⚠️ Versandlimit knapp\n\n` +
+                        `In der letzten Stunde: ${recentCount} Mails eingereiht.\n` +
+                        `Mit dieser Aktion kommen ${toSend} dazu (Total: ${recentCount + toSend} / ${MAIL_LIMIT_PER_HOUR}).\n\n` +
+                        `Limit wird nicht überschritten, ist aber knapp. Fortfahren?`
+                    );
+                    if (!proceed) return;
+                }
             }
 
             const btn = document.getElementById('save-zuteilungen-btn');
@@ -1666,6 +1728,9 @@
                 // Zeige Erfolg und E-Mail/Kalender Optionen (mit Email-Status)
                 showEmailKalenderOptionen(emailResult);
 
+                // Mail-Versand-Status neu laden (neue Mails wurden eingereiht)
+                updateMailRateStatus();
+
             } catch (error) {
                 console.error('=== FEHLER ===');
                 console.error('Fehlertyp:', error.name);
@@ -1675,6 +1740,78 @@
                 showMessage('zuteilung', '❌ ' + error.message, 'error');
                 btn.disabled = false;
                 btn.textContent = originalText;
+            }
+        }
+
+        // Zählt Mail-Dokumente, die in der letzten Stunde eingereiht wurden.
+        // Wird für die Hoststar-Versandlimit-Warnung verwendet (100 Mails/h).
+        async function countRecentMails() {
+            try {
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const snapshot = await db.collection('mail')
+                    .where('_meta.created_at', '>=', firebase.firestore.Timestamp.fromDate(oneHourAgo))
+                    .get();
+                return snapshot.size;
+            } catch (error) {
+                console.warn('Mail-Rate konnte nicht ermittelt werden:', error);
+                return null;
+            }
+        }
+
+        // Zählt, wie viele Mails beim Speichern der aktuellen Zuteilungen versendet würden.
+        function countMailsToSend() {
+            let count = 0;
+            if (!window.kinderGruppen) return 0;
+            for (const [hash, terminId] of Object.entries(assignments)) {
+                const gruppe = window.kinderGruppen[hash];
+                if (gruppe && terminId) {
+                    count += gruppe.antworten.length;
+                }
+            }
+            return count;
+        }
+
+        // Aktualisiert die Mail-Versand-Status-Anzeige im Zuteilung-Tab.
+        async function updateMailRateStatus() {
+            const statusDiv = document.getElementById('mail-rate-status');
+            if (!statusDiv) return;
+
+            try {
+                const settingsDoc = await db.collection('settings').doc(currentUser.uid).get();
+                const autoMailActive = settingsDoc.exists && settingsDoc.data().auto_email_enabled;
+                if (!autoMailActive) {
+                    statusDiv.style.display = 'none';
+                    return;
+                }
+
+                const recent = await countRecentMails();
+                if (recent === null) {
+                    statusDiv.style.display = 'none';
+                    return;
+                }
+
+                const toSend = countMailsToSend();
+                const totalAfter = recent + toSend;
+                let bgColor, textColor, icon, message;
+
+                if (totalAfter > MAIL_LIMIT_PER_HOUR) {
+                    bgColor = '#f8d7da'; textColor = '#721c24'; icon = '⛔';
+                    message = `<strong>Versandlimit würde überschritten:</strong> ${recent}/${MAIL_LIMIT_PER_HOUR} Mails in letzter Stunde, ${toSend} würden jetzt dazukommen. Hoststar erlaubt ${MAIL_LIMIT_PER_HOUR}/Stunde.`;
+                } else if (totalAfter >= MAIL_WARN_THRESHOLD) {
+                    bgColor = '#fff3cd'; textColor = '#856404'; icon = '⚠️';
+                    message = `<strong>Limit knapp:</strong> ${recent}/${MAIL_LIMIT_PER_HOUR} Mails in letzter Stunde, ${toSend} würden dazukommen.`;
+                } else {
+                    bgColor = '#d4edda'; textColor = '#155724'; icon = '📧';
+                    message = `Mail-Versand: ${recent}/${MAIL_LIMIT_PER_HOUR} in letzter Stunde` + (toSend > 0 ? ` · ${toSend} würden jetzt versendet` : '');
+                }
+
+                statusDiv.style.background = bgColor;
+                statusDiv.style.color = textColor;
+                statusDiv.innerHTML = `${icon} ${message}`;
+                statusDiv.style.display = 'block';
+            } catch (error) {
+                console.warn('Mail-Status-Anzeige fehlgeschlagen:', error);
+                statusDiv.style.display = 'none';
             }
         }
 

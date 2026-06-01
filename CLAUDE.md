@@ -398,6 +398,15 @@ Firestore wirft Fehler bei leeren Batches - immer prüfen!
 ### 6. Mail-Versand: Asynchrone Verarbeitung
 Der Auto-Versand schreibt nur in die `mail`-Collection - die eigentliche Zustellung erfolgt durch die Trigger-Email-Extension. `success`-Count in `sendAutomaticEmails()` bedeutet daher "in Warteschlange", nicht "zugestellt". Tatsächlicher Status: im Mail-Dokument unter `delivery.state` (`SUCCESS`, `ERROR`, `PROCESSING`, `RETRY`).
 
+### 7. Mail-Rate-Limit-Überwachung (Hoststar)
+Hoststar erlaubt **100 ausgehende Mails/Stunde pro Postfach**. Konstanten in `lehrer-dashboard.html`:
+- `MAIL_LIMIT_PER_HOUR = 100`
+- `MAIL_WARN_THRESHOLD = 90` (gelbe Vorwarnung)
+
+`countRecentMails()` zählt `mail`-Dokumente mit `_meta.created_at >= now - 1h`. Wird angezeigt im Zuteilung-Tab (`#mail-rate-status`) und vor `saveZuteilungen()` als Confirm-Dialog geprüft.
+
+Damit die Zählung funktioniert, hat die `mail`-Collection in den Firestore-Rules `read: if isSignedIn()` (Lehrpersonen sehen Mails anderer Lehrer:innen - akzeptabel, da Kolleg:innen am gleichen Schulhaus). Falls strengere Trennung gefordert wird, müsste man auf eine separate Counter-Doc-Architektur mit Cloud Function umsteigen.
+
 ## Häufige Änderungsanfragen
 
 ### Feature: Neue Einstellung hinzufügen

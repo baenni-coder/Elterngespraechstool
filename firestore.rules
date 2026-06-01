@@ -53,10 +53,12 @@ service cloud.firestore {
     }
 
     // Mail-Queue: Wird von der Firebase "Trigger Email" Extension verarbeitet.
-    // Authentifizierte Lehrpersonen können Mail-Dokumente erstellen,
-    // die Extension liest/schreibt mit Admin-Rechten (umgeht diese Rules).
+    // Authentifizierte Lehrpersonen können Mail-Dokumente erstellen und lesen
+    // (Lesen ist nötig für die Anzeige der Mails-pro-Stunde-Statistik im Dashboard,
+    // damit Lehrpersonen das Hoststar-Versandlimit überwachen können).
+    // Die Extension liest/schreibt mit Admin-Rechten (umgeht diese Rules).
     match /mail/{mailId} {
-      allow read: if false;
+      allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
