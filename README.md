@@ -303,7 +303,7 @@ zentral durch den Betreiber.
 
 Der Code schreibt nach jeder Zuteilung Mail-Dokumente in die Firestore-Collection `mail`.
 Die Extension versendet sie im Hintergrund via beliebigem SMTP-Server (empfohlen: das
-Postfach des eigenen Web-Hosters, z.B. Hoststar / Hostpoint).
+Postfach des eigenen Web-Hosters, z.B. Hoststar).
 
 ### Einmaliges Setup (durch Betreiber)
 
@@ -311,16 +311,16 @@ Postfach des eigenen Web-Hosters, z.B. Hoststar / Hostpoint).
    praktisch kostenlos, da Cloud-Functions-Free-Tier 2 Mio. Calls/Monat umfasst).
 
 2. **SMTP-Postfach bereitstellen** - z.B. bei Hoststar im Control Panel ein Postfach
-   wie `elterngespraech@deinedomain.ch` anlegen. SMTP-Daten von Hostpoint:
-   - Server: `asmtp.mail.hostpoint.ch`
-   - Port: `465` (SSL/TLS)
+   wie `elterngespraech@deinedomain.ch` anlegen. SMTP-Daten bei Hoststar:
+   - Server: `lx<NR>.hoststar.hosting` (Servernummer steht im Hoststar Control Panel)
+   - Port: `587` (STARTTLS) - **wichtig**: Port 25 ist von Google Cloud blockiert
    - User: volle E-Mail-Adresse, Passwort: Postfach-Passwort
 
 3. **Extension installieren** über Firebase Console → Extensions → Suche
    "Trigger Email from Firestore" (`firebase/firestore-send-email`). Konfiguration:
    - **Collection path:** `mail`
    - **SMTP connection URI:**
-     `smtps://NAME%40DOMAIN.CH:PASSWORT@asmtp.mail.hostpoint.ch:465`
+     `smtp://NAME%40DOMAIN.CH@lx<NR>.hoststar.hosting:587` (Passwort separat als Secret)
      (das `@` im Username als `%40` URL-encoden)
    - **Default FROM address:** `Elterngespräch <elterngespraech@deinedomain.ch>`
    - **Default REPLY-TO address:** leer lassen (wird pro Mail gesetzt)
@@ -334,7 +334,7 @@ Postfach des eigenen Web-Hosters, z.B. Hoststar / Hostpoint).
 5. **Budget-Alarm einrichten** (Firebase Console → Budgets) - empfohlen CHF 5/Monat,
    schützt vor unerwartet hoher Nutzung.
 
-### Versand-Limits (Hoststar/Hostpoint typisch)
+### Versand-Limits (Hoststar)
 
 - ~500 Mails/Tag pro Postfach
 - ~50 Empfänger pro Mail
