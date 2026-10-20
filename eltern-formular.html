@@ -289,9 +289,11 @@
                 <p>Termine werden geladen...</p>
             </div>
             
+            <!-- Ausserhalb von #form-container, damit Lade-Fehler sichtbar sind -->
+            <div id="message"></div>
+
             <div id="form-container" style="display: none;">
-                <div id="message"></div>
-                
+
                 <form id="eltern-form" onsubmit="submitForm(event)">
                     <div class="form-group">
                         <label data-mag-text="formular.label_name">Namen Ihrer Kinder * <span style="font-weight: normal; color: #666;">(in dieser Klasse)</span></label>
@@ -576,7 +578,8 @@
 
                 console.log('=== SUCCESS ===');
 
-                // Zeige Erfolg
+                // Zeige Erfolg (alte Hinweise/Fehler entfernen)
+                document.getElementById('message').innerHTML = '';
                 document.getElementById('form-container').style.display = 'none';
                 document.getElementById('success-message').style.display = 'block';
 
