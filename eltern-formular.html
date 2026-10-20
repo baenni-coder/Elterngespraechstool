@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elterngespräch - Terminwahl</title>
+    <title data-mag-text="formular.seitentitel">Elterngespräch - Terminwahl</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -11,6 +11,7 @@
     <!-- CryptoJS für Verschlüsselung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="texte.js"></script>
     <style>
         * {
             margin: 0;
@@ -278,8 +279,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📅 Elterngespräch</h1>
-            <p id="header-subtitle">Bitte wählen Sie Ihre verfügbaren Termine</p>
+            <h1 data-mag-text="formular.titel">📅 Elterngespräch</h1>
+            <p id="header-subtitle" data-mag-text="formular.untertitel">Bitte wählen Sie Ihre verfügbaren Termine</p>
         </div>
         
         <div class="content">
@@ -293,22 +294,22 @@
                 
                 <form id="eltern-form" onsubmit="submitForm(event)">
                     <div class="form-group">
-                        <label>Namen Ihrer Kinder * <span style="font-weight: normal; color: #666;">(in dieser Klasse)</span></label>
+                        <label data-mag-text="formular.label_name">Namen Ihrer Kinder * <span style="font-weight: normal; color: #666;">(in dieser Klasse)</span></label>
                         <div class="kinder-liste" id="kinder-liste">
                             <div class="kind-item">
-                                <input type="text" class="kindname" required placeholder="z.B. Max Muster">
+                                <input type="text" class="kindname" required placeholder="z.B. Max Muster" data-mag-placeholder="formular.platzhalter_name">
                             </div>
                         </div>
-                        <button type="button" class="btn btn-secondary" onclick="addKind()">➕ Weiteres Kind hinzufügen</button>
+                        <button type="button" class="btn btn-secondary" onclick="addKind()" data-mag-ausblenden>➕ Weiteres Kind hinzufügen</button>
                     </div>
 
                     <div class="form-group">
-                        <label>Ihre E-Mail-Adresse *</label>
-                        <input type="email" id="email" required placeholder="ihre.email@beispiel.ch">
+                        <label data-mag-text="formular.label_email">Ihre E-Mail-Adresse *</label>
+                        <input type="email" id="email" required placeholder="ihre.email@beispiel.ch" data-mag-placeholder="formular.platzhalter_email">
                     </div>
 
                     <div class="form-group">
-                        <label id="termine-label">Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span></label>
+                        <label id="termine-label" data-mag-html="formular.label_termine">Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span></label>
                         <div class="checkbox-group" id="termine-list"></div>
                     </div>
 
@@ -318,7 +319,7 @@
             
             <div id="success-message">
                 <div class="success-icon">✅</div>
-                <div class="alert alert-success">
+                <div class="alert alert-success" data-mag-html="formular.erfolg">
                     <strong>Vielen Dank!</strong><br>
                     Ihre Verfügbarkeit wurde erfolgreich übermittelt.<br><br>
                     Sie erhalten eine Bestätigung per E-Mail, sobald die Lehrperson die Termine zugeteilt hat.
@@ -347,7 +348,7 @@
             teacherId = urlParams.get('teacher');
 
             if (!teacherId) {
-                showError('Ungültiger Link. Bitte verwenden Sie den Link, den Sie von der Lehrperson erhalten haben.');
+                showError(variantenText('formular.fehler_link', 'Ungültiger Link. Bitte verwenden Sie den Link, den Sie von der Lehrperson erhalten haben.'));
                 return;
             }
 
@@ -367,15 +368,15 @@
                 if (settingsDoc.exists && settingsDoc.data().teacher_name) {
                     teacherName = settingsDoc.data().teacher_name;
                     // Aktualisiere Untertitel
-                    document.getElementById('header-subtitle').textContent = `Lehrperson: ${teacherName}`;
+                    document.getElementById('header-subtitle').textContent = variantenText('formular.untertitel_mit_name', `Lehrperson: ${teacherName}`, teacherName);
                 } else {
                     // Kein Name in Settings: Zeige Standard-Untertitel
-                    document.getElementById('header-subtitle').textContent = 'Bitte wählen Sie Ihre verfügbaren Termine';
+                    document.getElementById('header-subtitle').textContent = variantenText('formular.untertitel', 'Bitte wählen Sie Ihre verfügbaren Termine');
                 }
             } catch (error) {
                 console.error('Fehler beim Laden des Lehrernamens:', error);
                 // Fallback: Zeige generischen Text
-                document.getElementById('header-subtitle').textContent = 'Bitte wählen Sie Ihre verfügbaren Termine';
+                document.getElementById('header-subtitle').textContent = variantenText('formular.untertitel', 'Bitte wählen Sie Ihre verfügbaren Termine');
             }
         }
         
@@ -410,7 +411,7 @@
                 }));
 
                 if (!termine || termine.length === 0) {
-                    showError('Aktuell sind keine Termine verfügbar. Bitte kontaktieren Sie die Lehrperson.');
+                    showError(variantenText('formular.fehler_keine_termine', 'Aktuell sind keine Termine verfügbar. Bitte kontaktieren Sie die Lehrperson.'));
                     return;
                 }
 
@@ -425,7 +426,7 @@
                 verfuegbareTermine = termine.filter(t => !zugeteilteIds.includes(t.id));
 
                 if (verfuegbareTermine.length === 0) {
-                    showWarning('Alle Termine sind bereits vergeben. Bitte kontaktieren Sie die Lehrperson für weitere Möglichkeiten.');
+                    showWarning(variantenText('formular.fehler_alle_vergeben', 'Alle Termine sind bereits vergeben. Bitte kontaktieren Sie die Lehrperson für weitere Möglichkeiten.'));
                     return;
                 }
 
@@ -448,7 +449,8 @@
 
             // Aktualisiere Label mit Mindestanzahl
             const label = document.getElementById('termine-label');
-            label.innerHTML = `Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${minTermineAnzahl} ${minTermineAnzahl === 1 ? 'Termin' : 'Termine'} auswählen)</span>`;
+            const minWort = minTermineAnzahl === 1 ? 'Termin' : 'Termine';
+            label.innerHTML = variantenText('formular.label_termine_min', `Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${minTermineAnzahl} ${minWort} auswählen)</span>`, minTermineAnzahl, minWort);
 
             const termineList = document.getElementById('termine-list');
             termineList.innerHTML = '';
@@ -516,7 +518,7 @@
             });
 
             if (kindnamen.length === 0) {
-                showError('Bitte geben Sie mindestens einen Kindnamen ein.');
+                showError(variantenText('formular.fehler_kein_name', 'Bitte geben Sie mindestens einen Kindnamen ein.'));
                 return;
             }
 
@@ -528,12 +530,14 @@
             });
 
             if (selectedTermine.length === 0) {
-                showError('Bitte wählen Sie mindestens einen Termin aus.');
+                showError(variantenText('formular.fehler_kein_termin', 'Bitte wählen Sie mindestens einen Termin aus.'));
                 return;
             }
 
             if (selectedTermine.length < minTermineAnzahl) {
-                showError(`Bitte wählen Sie mindestens ${minTermineAnzahl} ${minTermineAnzahl === 1 ? 'Termin' : 'Termine'} aus. Sie haben ${selectedTermine.length} ${selectedTermine.length === 1 ? 'Termin' : 'Termine'} ausgewählt.`);
+                const minWort = minTermineAnzahl === 1 ? 'Termin' : 'Termine';
+                const anzahlWort = selectedTermine.length === 1 ? 'Termin' : 'Termine';
+                showError(variantenText('formular.fehler_zu_wenig_termine', `Bitte wählen Sie mindestens ${minTermineAnzahl} ${minWort} aus. Sie haben ${selectedTermine.length} ${anzahlWort} ausgewählt.`, minTermineAnzahl, minWort, selectedTermine.length, anzahlWort));
                 return;
             }
 
@@ -551,7 +555,7 @@
                 // Lade Encryption Key der Lehrperson
                 const encryptionKey = await crypto.getEncryptionKey(teacherId);
                 if (!encryptionKey) {
-                    throw new Error('Verschlüsselungskey konnte nicht geladen werden. Bitte kontaktieren Sie die Lehrperson.');
+                    throw new Error(variantenText('formular.fehler_schluessel', 'Verschlüsselungskey konnte nicht geladen werden. Bitte kontaktieren Sie die Lehrperson.'));
                 }
 
                 // Erstelle für jedes Kind einen separaten Eintrag
