@@ -27,7 +27,21 @@ const MAG_TEXTE = {
     'formular.fehler_kein_name': 'Bitte gib deinen Namen ein.',
     'formular.fehler_kein_termin': 'Bitte wähle mindestens einen Termin aus.',
     'formular.fehler_zu_wenig_termine': (min, minWort, anzahl, anzahlWort) => `Bitte wähle mindestens ${min} ${minWort} aus. Du hast ${anzahl} ${anzahlWort} ausgewählt.`,
-    'formular.fehler_schluessel': 'Verschlüsselungskey konnte nicht geladen werden. Bitte melde dich bei der Schulleitung.'
+    'formular.fehler_schluessel': 'Verschlüsselungskey konnte nicht geladen werden. Bitte melde dich bei der Schulleitung.',
+
+    // ---------- index.html ----------
+    'start.seitentitel': 'MAG-Planer',
+    'start.titel': '📅 MAG-Planer',
+    'start.button_leitung': '💼 Für Schulleitungen<br><small style="font-weight: normal; font-size: 14px;">Termine verwalten & zuteilen</small>',
+    'start.button_formular': '👥 Für Mitarbeitende<br><small style="font-weight: normal; font-size: 14px;">Verfügbarkeit angeben</small>',
+    'start.info': '<strong>Für Mitarbeitende:</strong> Klicke auf "Für Mitarbeitende" und gib deine verfügbaren Termine an.<br><br><strong>Für Schulleitungen:</strong> Melde dich an, um Termine zu erstellen und zuzuteilen.',
+
+    // ---------- lehrer-login.html ----------
+    // Registrierung ist in der MAG-Variante ausgeblendet; Konten werden in der Firebase Console angelegt.
+    'login.seitentitel': 'Login Schulleitung',
+    'login.titel': '💼 Login Schulleitung',
+    'login.untertitel': 'Melde dich an, um Termine zu verwalten',
+    'login.erfolg': '✓ Erfolgreich angemeldet! Du wirst weitergeleitet...'
 };
 
 function istMagVariante() {

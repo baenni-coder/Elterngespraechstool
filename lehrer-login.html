@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lehrer Login</title>
+    <title data-mag-text="login.seitentitel">Lehrer Login</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -11,6 +11,7 @@
     <!-- CryptoJS für Verschlüsselung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="texte.js"></script>
     <style>
         * {
             margin: 0;
@@ -166,8 +167,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>👨‍🏫 Lehrer-Login</h1>
-        <p class="subtitle">Melden Sie sich an, um Termine zu verwalten</p>
+        <h1 data-mag-text="login.titel">👨‍🏫 Lehrer-Login</h1>
+        <p class="subtitle" data-mag-text="login.untertitel">Melden Sie sich an, um Termine zu verwalten</p>
 
         <div id="message"></div>
 
@@ -187,9 +188,9 @@
                 <button type="submit" class="btn" id="login-btn">Anmelden</button>
             </form>
 
-            <div class="divider">oder</div>
+            <div class="divider" data-mag-ausblenden>oder</div>
 
-            <button class="btn btn-secondary" onclick="showRegister()">Neues Konto erstellen</button>
+            <button class="btn btn-secondary" onclick="showRegister()" data-mag-ausblenden>Neues Konto erstellen</button>
         </div>
 
         <!-- Register Form -->
@@ -273,7 +274,7 @@
                 // Encryption Key generieren falls noch nicht vorhanden (für bestehende Accounts)
                 await crypto.getOrCreateEncryptionKey(userCredential.user.uid);
 
-                showMessage('✓ Erfolgreich angemeldet! Sie werden weitergeleitet...', 'success');
+                showMessage(variantenText('login.erfolg', '✓ Erfolgreich angemeldet! Sie werden weitergeleitet...'), 'success');
 
                 setTimeout(() => {
                     window.location.href = 'lehrer-dashboard.html';
