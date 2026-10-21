@@ -553,6 +553,9 @@
         </div>
         
         <div class="content">
+            <!-- Hinweis bei unbestätigter E-Mail-Adresse / fremder Domain (siehe pruefeKonto) -->
+            <div id="konto-hinweis"></div>
+
             <!-- Tab: Termine erstellen -->
             <div id="tab-termine" class="tab-content active">
                 <h2>Termine erstellen</h2>
@@ -1074,6 +1077,7 @@
             encryptionKey = await crypto.getOrCreateEncryptionKey(currentUser.uid);
 
             document.getElementById('user-email').textContent = currentUser.email;
+            await pruefeKonto();
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
 
@@ -2191,6 +2195,58 @@ END:VEVENT
             alert(variantenText('dashboard.link_kopiert', '✓ Link kopiert! Sie können ihn jetzt in eine E-Mail einfügen.'));
         }
         
+        // Muss mit der Domain-Liste in firestore.rules übereinstimmen
+        const ERLAUBTE_EMAIL_DOMAINS = ['belose.ch'];
+
+        // Zeigt einen Hinweis, wenn die E-Mail-Adresse noch nicht bestätigt ist oder keine
+        // Schul-Adresse ist. Beides wird von den Security Rules (Etappe 2) vorausgesetzt.
+        async function pruefeKonto() {
+            const hinweis = document.getElementById('konto-hinweis');
+            try {
+                // Aktuellen Bestätigungs-Status vom Server holen (z.B. nach Klick auf den Link)
+                await currentUser.reload();
+                if (currentUser.emailVerified) {
+                    // Token erneuern, damit die Security Rules die Bestätigung sehen
+                    const token = await currentUser.getIdTokenResult();
+                    if (!token.claims.email_verified) {
+                        await currentUser.getIdToken(true);
+                    }
+                }
+            } catch (error) {
+                console.warn('Konto-Status konnte nicht aktualisiert werden:', error);
+            }
+
+            const domain = (currentUser.email || '').split('@').pop().toLowerCase();
+            if (!ERLAUBTE_EMAIL_DOMAINS.includes(domain)) {
+                hinweis.innerHTML = `<div class="alert alert-warning" style="margin-bottom: 20px;">${variantenText('dashboard.konto_domain',
+                    `<strong>Hinweis zu Ihrem Konto:</strong> Sie sind mit <strong>${currentUser.email}</strong> angemeldet. Bald funktioniert das Tool nur noch mit einer Schul-Adresse (@${ERLAUBTE_EMAIL_DOMAINS.join(', @')}). Bitte wenden Sie sich an den Betreiber (siehe Impressum), um Ihr Konto umzustellen.`,
+                    currentUser.email, ERLAUBTE_EMAIL_DOMAINS)}</div>`;
+            } else if (!currentUser.emailVerified) {
+                hinweis.innerHTML = `<div class="alert alert-warning" style="margin-bottom: 20px;">
+                    ${variantenText('dashboard.konto_bestaetigen', '<strong>Bitte bestätigen Sie Ihre E-Mail-Adresse.</strong> Bald ist das nötig, um das Tool weiter zu nutzen. Sie erhalten dazu einen Link per E-Mail.')}
+                    <div style="margin-top: 10px;"><button class="btn btn-primary btn-small" id="bestaetigung-senden-btn" onclick="sendeBestaetigungslink()">${variantenText('dashboard.konto_link_button', '📧 Bestätigungslink senden')}</button></div>
+                </div>`;
+            } else {
+                hinweis.innerHTML = '';
+            }
+        }
+
+        async function sendeBestaetigungslink() {
+            const btn = document.getElementById('bestaetigung-senden-btn');
+            btn.disabled = true;
+            try {
+                await currentUser.sendEmailVerification();
+                btn.parentElement.innerHTML = variantenText('dashboard.konto_link_gesendet',
+                    `✓ Link an <strong>${currentUser.email}</strong> gesendet. Nach dem Bestätigen bitte diese Seite neu laden. (Keine Mail erhalten? Bitte auch den Spam-Ordner prüfen.)`,
+                    currentUser.email);
+            } catch (error) {
+                btn.disabled = false;
+                alert(error.code === 'auth/too-many-requests'
+                    ? variantenText('dashboard.konto_zu_viele', 'Es wurden zu viele Links angefordert. Bitte versuchen Sie es in einigen Minuten erneut.')
+                    : 'Fehler: ' + error.message);
+            }
+        }
+
         function showMessage(tab, text, type) {
             const messageDiv = document.getElementById(tab + '-message');
             messageDiv.innerHTML = `<div class="alert alert-${type}" style="margin-top: 20px;">${text}</div>`;

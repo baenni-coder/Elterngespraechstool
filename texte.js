@@ -94,7 +94,14 @@ const MAG_TEXTE = {
     'dashboard.reset_erfolg': '✓ Erfolgreich! Alle Antworten und Zuteilungen wurden gelöscht. Deine Termine sind wieder verfügbar.',
     'dashboard.alles_confirm_1': '⚠️⚠️ ACHTUNG! ⚠️⚠️\n\nDies löscht ALLES:\n- Alle Termine\n- Alle Antworten\n- Alle Zuteilungen\n\nWirklich ALLES löschen?',
     'dashboard.alles_confirm_2': 'LETZTE WARNUNG!\n\nDu löschst wirklich ALLE deine Daten.\nDies kann NICHT rückgängig gemacht werden!\n\nFortfahren?',
-    'dashboard.alles_erfolg': '✓ Erfolgreich! Alle Daten wurden gelöscht. Du kannst jetzt von vorne beginnen.'
+    'dashboard.alles_erfolg': '✓ Erfolgreich! Alle Daten wurden gelöscht. Du kannst jetzt von vorne beginnen.',
+
+    // Konto-Hinweise (E-Mail-Bestätigung / Schul-Domain)
+    'dashboard.konto_domain': (email, domains) => `<strong>Hinweis zu deinem Konto:</strong> Du bist mit <strong>${email}</strong> angemeldet. Bald funktioniert das Tool nur noch mit einer Schul-Adresse (@${domains.join(', @')}). Bitte melde dich beim Betreiber (siehe Impressum), um dein Konto umzustellen.`,
+    'dashboard.konto_bestaetigen': '<strong>Bitte bestätige deine E-Mail-Adresse.</strong> Bald ist das nötig, um das Tool weiter zu nutzen. Du erhältst dazu einen Link per E-Mail.',
+    'dashboard.konto_link_button': '📧 Bestätigungslink senden',
+    'dashboard.konto_link_gesendet': (email) => `✓ Link an <strong>${email}</strong> gesendet. Nach dem Bestätigen bitte diese Seite neu laden. (Keine Mail erhalten? Bitte auch den Spam-Ordner prüfen.)`,
+    'dashboard.konto_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.'
 };
 
 function istMagVariante() {

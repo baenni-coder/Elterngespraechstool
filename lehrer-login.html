@@ -321,11 +321,21 @@
                     updated_at: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                showMessage('✓ Konto erfolgreich erstellt! Sie können sich jetzt anmelden.', 'success');
-
-                setTimeout(() => {
+                // Bestätigungslink senden (wird für die Nutzung des Tools vorausgesetzt).
+                // Ein Fehler hier soll die Registrierung nicht scheitern lassen - im Dashboard
+                // kann der Link jederzeit erneut angefordert werden.
+                try {
+                    await userCredential.user.sendEmailVerification();
+                    // Sofort zum Login wechseln und den Hinweis dort stehen lassen (showLogin leert #message)
                     showLogin();
-                }, 2000);
+                    showMessage(`✓ Konto erfolgreich erstellt! Wir haben Ihnen einen Bestätigungslink an <strong>${email}</strong> geschickt. Bitte klicken Sie darauf und melden Sie sich danach an.`, 'info');
+                } catch (verifyError) {
+                    console.error('Bestätigungslink konnte nicht gesendet werden:', verifyError);
+                    showMessage('✓ Konto erfolgreich erstellt! Sie können sich jetzt anmelden. Den Bestätigungslink können Sie im Dashboard anfordern.', 'success');
+                    setTimeout(() => {
+                        showLogin();
+                    }, 2000);
+                }
 
             } catch (error) {
                 showMessage('Fehler bei der Registrierung: ' + error.message, 'error');
