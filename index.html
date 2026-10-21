@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elterngespräch-Planer</title>
+    <title data-mag-text="start.seitentitel">Elterngespräch-Planer</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="texte.js"></script>
     <style>
         * {
             margin: 0;
@@ -122,22 +123,22 @@
 </head>
 <body>
     <div class="container">
-        <h1>📅 Elterngespräch-Planer</h1>
+        <h1 data-mag-text="start.titel">📅 Elterngespräch-Planer</h1>
         <p class="subtitle">Terminkoordination leicht gemacht</p>
 
         <div class="button-group">
-            <a href="lehrer-login.html" class="btn btn-primary">
+            <a href="lehrer-login.html" class="btn btn-primary" data-mag-html="start.button_leitung">
                 👨‍🏫 Für Lehrpersonen<br>
                 <small style="font-weight: normal; font-size: 14px;">Termine verwalten & zuteilen</small>
             </a>
 
-            <a href="eltern-formular.html" class="btn btn-secondary" id="eltern-btn">
+            <a href="eltern-formular.html" class="btn btn-secondary" id="eltern-btn" data-mag-html="start.button_formular">
                 👪 Für Eltern<br>
                 <small style="font-weight: normal; font-size: 14px;">Verfügbarkeit angeben</small>
             </a>
         </div>
 
-        <div class="info">
+        <div class="info" data-mag-html="start.info">
             <strong>Für Eltern:</strong> Klicken Sie auf "Für Eltern" und geben Sie Ihre verfügbaren Termine an.<br><br>
             <strong>Für Lehrpersonen:</strong> Melden Sie sich an, um Termine zu erstellen und zuzuteilen.
         </div>

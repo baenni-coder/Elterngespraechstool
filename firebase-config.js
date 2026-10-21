@@ -1,18 +1,54 @@
 // ============================================
-// FIREBASE KONFIGURATION
+// VARIANTEN: Elterngespräch / Mitarbeitendengespräch (MAG)
 // ============================================
 
-// WICHTIG: Ersetze diese Werte mit deinen eigenen aus Firebase Console!
-// Gehe zu: Firebase Console > Projekteinstellungen > Deine Apps > SDK-Setup und -Konfiguration
-const firebaseConfig = {
-  apiKey: "AIzaSyCgowrNGd0TasK5QusQURdWBKRcB3vmCus",
-  authDomain: "elterngespraechs-tool.firebaseapp.com",
-  projectId: "elterngespraechs-tool",
-  storageBucket: "elterngespraechs-tool.firebasestorage.app",
-  messagingSenderId: "911556449022",
-  appId: "1:911556449022:web:bd2f33cb4714538c438baf",
-  measurementId: "G-QQQZH44E7H"
+// Derselbe Code läuft als zwei getrennte Instanzen mit je eigener Datenbank.
+// Welche Variante aktiv ist, entscheidet der Hostname. Jeder unbekannte Hostname
+// ergibt die Eltern-Variante - so bleibt die bestehende Installation unverändert.
+const VARIANTEN = {
+    eltern: {
+        // WICHTIG: Werte aus Firebase Console > Projekteinstellungen > Deine Apps > SDK-Setup und -Konfiguration
+        firebaseConfig: {
+            apiKey: "AIzaSyCgowrNGd0TasK5QusQURdWBKRcB3vmCus",
+            authDomain: "elterngespraechs-tool.firebaseapp.com",
+            projectId: "elterngespraechs-tool",
+            storageBucket: "elterngespraechs-tool.firebasestorage.app",
+            messagingSenderId: "911556449022",
+            appId: "1:911556449022:web:bd2f33cb4714538c438baf",
+            measurementId: "G-QQQZH44E7H"
+        }
+    },
+    mag: {
+        // Hostnamen der MAG-Instanz (noch festzulegen)
+        hostnames: [],
+        // Eigenes Firebase-Projekt - wird eingetragen, sobald es existiert.
+        // Solange null, startet die MAG-Variante bewusst NICHT (nie in die Eltern-Datenbank schreiben!)
+        firebaseConfig: null
+    }
 };
+
+function ermittleVariante() {
+    const host = window.location.hostname;
+    if (VARIANTEN.mag.hostnames.includes(host)) {
+        return 'mag';
+    }
+    // Lokales Testen: ?variante=mag (nur auf localhost, nie auf der Live-Domain)
+    const istLokal = host === 'localhost' || host === '127.0.0.1' || host === '';
+    if (istLokal && new URLSearchParams(window.location.search).get('variante') === 'mag') {
+        return 'mag';
+    }
+    return 'eltern';
+}
+
+const VARIANTE = ermittleVariante();
+const firebaseConfig = VARIANTEN[VARIANTE].firebaseConfig;
+
+if (!firebaseConfig) {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.body.innerHTML = '<p style="padding: 40px; font-family: sans-serif; text-align: center;">Diese Instanz ist noch nicht eingerichtet.</p>';
+    });
+    throw new Error(`Keine Firebase-Konfiguration für Variante "${VARIANTE}" hinterlegt.`);
+}
 
 // Firebase initialisieren
 firebase.initializeApp(firebaseConfig);

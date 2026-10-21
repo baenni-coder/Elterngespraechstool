@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lehrer-Dashboard</title>
+    <title data-mag-text="dashboard.seitentitel">Lehrer-Dashboard</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -11,6 +11,7 @@
     <!-- CryptoJS für Verschlüsselung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="texte.js"></script>
     <style>
         * {
             margin: 0;
@@ -534,7 +535,7 @@
     <div class="container" id="dashboard" style="display: none;">
         <div class="header">
             <div>
-                <h1>👨‍🏫 Lehrer-Dashboard</h1>
+                <h1 data-mag-text="dashboard.titel">👨‍🏫 Lehrer-Dashboard</h1>
                 <p id="user-email" style="opacity: 0.9; margin-top: 5px;"></p>
             </div>
             <div class="header-actions">
@@ -545,7 +546,7 @@
         <div class="tabs">
             <div class="tab active" onclick="switchTab('termine')">📅 Meine Termine</div>
             <div class="tab" onclick="switchTab('share')">🔗 Link teilen</div>
-            <div class="tab" onclick="switchTab('antworten')">📨 Eltern-Antworten (<span id="antworten-count">0</span>)</div>
+            <div class="tab" onclick="switchTab('antworten')" data-mag-html="dashboard.tab_antworten">📨 Eltern-Antworten (<span id="antworten-count">0</span>)</div>
             <div class="tab" onclick="switchTab('zuteilung')">✅ Zuteilung</div>
             <div class="tab" onclick="switchTab('verwaltung')">⚙️ Verwaltung</div>
             <div class="tab" onclick="switchTab('hilfe')">❓ Hilfe</div>
@@ -555,7 +556,7 @@
             <!-- Tab: Termine erstellen -->
             <div id="tab-termine" class="tab-content active">
                 <h2>Termine erstellen</h2>
-                <p style="color: #666; margin-bottom: 20px;">Erstellen Sie Termine für Elterngespräche.</p>
+                <p style="color: #666; margin-bottom: 20px;" data-mag-text="dashboard.termine_intro">Erstellen Sie Termine für Elterngespräche.</p>
 
                 <!-- Einstellungen -->
                 <div style="background: #e8f4f8; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
@@ -563,18 +564,18 @@
 
                     <!-- Name der Lehrperson -->
                     <div class="form-group">
-                        <label>Ihr Name (optional)</label>
+                        <label data-mag-text="dashboard.label_name">Ihr Name (optional)</label>
                         <input type="text" id="teacher-name" placeholder="z.B. Frau Müller" style="width: 100%; max-width: 400px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
-                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Wird den Eltern im Formular angezeigt, damit sie die Formulare nicht verwechseln.</p>
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;" data-mag-text="dashboard.hinweis_name">Wird den Eltern im Formular angezeigt, damit sie die Formulare nicht verwechseln.</p>
                     </div>
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
 
                     <!-- Mindestanzahl Termine -->
                     <div class="form-group">
-                        <label>Mindestanzahl Termine (die Eltern auswählen müssen)</label>
+                        <label data-mag-text="dashboard.label_min_termine">Mindestanzahl Termine (die Eltern auswählen müssen)</label>
                         <input type="number" id="min-termine" min="1" max="10" value="3" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
-                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Die Eltern müssen mindestens diese Anzahl an Terminen ankreuzen.</p>
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;" data-mag-text="dashboard.hinweis_min_termine">Die Eltern müssen mindestens diese Anzahl an Terminen ankreuzen.</p>
                     </div>
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
@@ -583,7 +584,7 @@
                     <div class="form-group">
                         <label>Standardgesprächsdauer (Minuten)</label>
                         <input type="number" id="standard-dauer" min="5" max="120" value="30" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
-                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Wird beim Erstellen neuer Termine automatisch vorausgefüllt. Sie können den Wert bei jedem einzelnen Termin überschreiben.</p>
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;" data-mag-text="dashboard.hinweis_dauer">Wird beim Erstellen neuer Termine automatisch vorausgefüllt. Sie können den Wert bei jedem einzelnen Termin überschreiben.</p>
                     </div>
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
@@ -600,9 +601,9 @@
 
                         <div id="email-settings" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 6px;">
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label style="font-size: 14px;">Kontakt-E-Mail für Eltern-Rückfragen (optional)</label>
+                                <label style="font-size: 14px;" data-mag-text="dashboard.label_kontakt_email">Kontakt-E-Mail für Eltern-Rückfragen (optional)</label>
                                 <input type="email" id="kontakt-email" placeholder="z.B. frau.mueller@schule.ch" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
-                                <p style="color: #666; font-size: 12px; margin-top: 6px;">
+                                <p style="color: #666; font-size: 12px; margin-top: 6px;" data-mag-html="dashboard.hinweis_kontakt_email">
                                     Wenn Eltern auf die Termin-Bestätigung antworten, landet die Nachricht an dieser Adresse.
                                     Wenn leer, wird Ihre Login-E-Mail verwendet.
                                     <br><br>
@@ -636,16 +637,16 @@
                 
                 <div id="termine-message"></div>
                 
-                <h3 style="margin-top: 40px; margin-bottom: 15px;">Ihre Termine</h3>
+                <h3 style="margin-top: 40px; margin-bottom: 15px;" data-mag-text="dashboard.titel_termine_liste">Ihre Termine</h3>
                 <div id="termine-liste" class="termine-liste"></div>
             </div>
             
             <!-- Tab: Zuteilung -->
             <div id="tab-zuteilung" class="tab-content">
                 <h2>Termine zuteilen</h2>
-                <p style="color: #666; margin-bottom: 20px;">Weisen Sie jedem Termin die gewünschten Eltern zu.</p>
+                <p style="color: #666; margin-bottom: 20px;" data-mag-text="dashboard.zuteilung_intro">Weisen Sie jedem Termin die gewünschten Eltern zu.</p>
 
-                <div class="alert alert-info">
+                <div class="alert alert-info" data-mag-html="dashboard.zuteilung_anleitung">
                     <strong>Anleitung:</strong> Klicken Sie auf ein Kind, um es einem Termin zuzuteilen. Bereits zugeteilte Kinder werden bei anderen Terminen ausgegraut.
                 </div>
 
@@ -661,8 +662,8 @@
             
             <!-- Tab: Antworten -->
             <div id="tab-antworten" class="tab-content">
-                <h2>Eltern-Antworten</h2>
-                <p style="color: #666; margin-bottom: 20px;">Übersicht der Eltern, die ihre Verfügbarkeit angegeben haben.</p>
+                <h2 data-mag-text="dashboard.antworten_titel">Eltern-Antworten</h2>
+                <p style="color: #666; margin-bottom: 20px;" data-mag-text="dashboard.antworten_intro">Übersicht der Eltern, die ihre Verfügbarkeit angegeben haben.</p>
 
                 <!-- Merge Controls -->
                 <div id="merge-controls" class="merge-controls">
@@ -677,26 +678,26 @@
                     </div>
                 </div>
 
-                <button class="btn btn-primary" onclick="enableMergeMode()" id="enable-merge-btn" style="margin-bottom: 20px;">🔀 Antworten zusammenführen</button>
+                <button class="btn btn-primary" onclick="enableMergeMode()" id="enable-merge-btn" data-mag-ausblenden style="margin-bottom: 20px;">🔀 Antworten zusammenführen</button>
 
                 <div id="antworten-liste" class="antworten-liste"></div>
             </div>
             
             <!-- Tab: Link teilen -->
             <div id="tab-share" class="tab-content">
-                <h2>Link mit Eltern teilen</h2>
-                <p style="color: #666; margin-bottom: 20px;">Senden Sie diesen Link an die Eltern, damit sie ihre Verfügbarkeit angeben können.</p>
+                <h2 data-mag-text="dashboard.share_titel">Link mit Eltern teilen</h2>
+                <p style="color: #666; margin-bottom: 20px;" data-mag-text="dashboard.share_intro">Senden Sie diesen Link an die Eltern, damit sie ihre Verfügbarkeit angeben können.</p>
                 
                 <div class="share-link">
-                    <h3>📎 Eltern-Formular Link</h3>
-                    <p style="margin: 10px 0; color: #666;">Kopieren Sie diesen Link und senden Sie ihn per E-Mail an die Eltern:</p>
+                    <h3 data-mag-text="dashboard.share_box_titel">📎 Eltern-Formular Link</h3>
+                    <p style="margin: 10px 0; color: #666;" data-mag-text="dashboard.share_box_text">Kopieren Sie diesen Link und senden Sie ihn per E-Mail an die Eltern:</p>
                     <div class="link-box">
                         <input type="text" id="share-url" readonly>
                         <button class="btn btn-primary" onclick="copyShareLink()">Kopieren</button>
                     </div>
                 </div>
                 
-                <div class="alert alert-info" style="margin-top: 20px;">
+                <div class="alert alert-info" style="margin-top: 20px;" data-mag-html="dashboard.share_tipp">
                     <strong>💡 Tipp:</strong> Die Eltern brauchen kein Konto. Sie können direkt über den Link ihre Verfügbarkeit angeben.
                 </div>
             </div>
@@ -704,23 +705,23 @@
             <!-- Tab: Verwaltung -->
             <div id="tab-verwaltung" class="tab-content">
                 <h2>⚙️ Verwaltung</h2>
-                <p style="color: #666; margin-bottom: 20px;">Verwaltungsfunktionen für Ihre Elterngespräche.</p>
+                <p style="color: #666; margin-bottom: 20px;" data-mag-text="dashboard.verwaltung_intro">Verwaltungsfunktionen für Ihre Elterngespräche.</p>
                 
                 <div class="alert alert-warning">
                     <strong>⚠️ Achtung:</strong> Diese Aktionen können nicht rückgängig gemacht werden!
                 </div>
                 
                 <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 20px;">
-                    <h3 style="margin-bottom: 15px; color: #333;">Für neue Elterngespräch-Runde vorbereiten</h3>
-                    <p style="color: #666; margin-bottom: 15px;">
+                    <h3 style="margin-bottom: 15px; color: #333;" data-mag-text="dashboard.reset_titel">Für neue Elterngespräch-Runde vorbereiten</h3>
+                    <p style="color: #666; margin-bottom: 15px;" data-mag-html="dashboard.reset_text">
                         Verwenden Sie diese Funktion, wenn Sie eine neue Runde Elterngespräche starten möchten.<br>
                         <strong>Was wird gelöscht:</strong>
                     </p>
                     <ul style="color: #666; margin-left: 20px; margin-bottom: 20px;">
-                        <li>Alle Eltern-Antworten</li>
+                        <li data-mag-text="dashboard.reset_liste_antworten">Alle Eltern-Antworten</li>
                         <li>Alle Zuteilungen</li>
                     </ul>
-                    <p style="color: #666; margin-bottom: 20px;">
+                    <p style="color: #666; margin-bottom: 20px;" data-mag-html="dashboard.reset_bleibt">
                         <strong>Was bleibt erhalten:</strong> Ihre Termine (werden wieder als verfügbar markiert)
                     </p>
                     
@@ -1252,12 +1253,12 @@
             const standardDauer = parseInt(document.getElementById('standard-dauer').value);
 
             if (minTermine < 1 || minTermine > 10) {
-                alert('Bitte geben Sie für die Mindestanzahl Termine eine Zahl zwischen 1 und 10 ein.');
+                alert(variantenText('dashboard.fehler_min_termine', 'Bitte geben Sie für die Mindestanzahl Termine eine Zahl zwischen 1 und 10 ein.'));
                 return;
             }
 
             if (isNaN(standardDauer) || standardDauer < 5 || standardDauer > 120) {
-                alert('Bitte geben Sie für die Standardgesprächsdauer eine Zahl zwischen 5 und 120 Minuten ein.');
+                alert(variantenText('dashboard.fehler_dauer', 'Bitte geben Sie für die Standardgesprächsdauer eine Zahl zwischen 5 und 120 Minuten ein.'));
                 return;
             }
 
@@ -1266,7 +1267,7 @@
             const kontaktEmail = document.getElementById('kontakt-email').value.trim();
 
             if (kontaktEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(kontaktEmail)) {
-                alert('Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein oder lassen Sie das Feld leer.');
+                alert(variantenText('dashboard.fehler_kontakt_email', 'Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein oder lassen Sie das Feld leer.'));
                 return;
             }
 
@@ -1467,7 +1468,7 @@
                 area.innerHTML = `
                     <div class="alert alert-warning">
                         <strong>Keine Daten vorhanden.</strong><br>
-                        Bitte erstellen Sie zuerst Termine und warten Sie auf Eltern-Antworten.
+                        ${variantenText('dashboard.zuteilung_keine_daten', 'Bitte erstellen Sie zuerst Termine und warten Sie auf Eltern-Antworten.')}
                     </div>
                 `;
                 return;
@@ -1612,14 +1613,14 @@
                 });
 
                 if (!hasOptions) {
-                    elternDiv.innerHTML = '<p style="color: #999; font-style: italic;">Keine Eltern für diesen Termin verfügbar</p>';
+                    elternDiv.innerHTML = '<p style="color: #999; font-style: italic;">' + variantenText('dashboard.zuteilung_niemand', 'Keine Eltern für diesen Termin verfügbar') + '</p>';
                 }
             });
         }
         
         async function saveZuteilungen() {
             if (Object.keys(assignments).length === 0) {
-                alert('Bitte teilen Sie mindestens einem Elternpaar einen Termin zu.');
+                alert(variantenText('dashboard.zuteilung_leer', 'Bitte teilen Sie mindestens einem Elternpaar einen Termin zu.'));
                 return;
             }
 
@@ -2163,7 +2164,7 @@ END:VEVENT
             const input = document.getElementById('share-url');
             input.select();
             document.execCommand('copy');
-            alert('✓ Link kopiert! Sie können ihn jetzt in eine E-Mail einfügen.');
+            alert(variantenText('dashboard.link_kopiert', '✓ Link kopiert! Sie können ihn jetzt in eine E-Mail einfügen.'));
         }
         
         function showMessage(tab, text, type) {
@@ -2176,11 +2177,11 @@ END:VEVENT
         }
         
         async function resetAntworten() {
-            if (!confirm('⚠️ ACHTUNG!\n\nDies löscht ALLE Eltern-Antworten und Zuteilungen.\nIhre Termine bleiben erhalten.\n\nWirklich fortfahren?')) {
+            if (!confirm(variantenText('dashboard.reset_confirm_1', '⚠️ ACHTUNG!\n\nDies löscht ALLE Eltern-Antworten und Zuteilungen.\nIhre Termine bleiben erhalten.\n\nWirklich fortfahren?'))) {
                 return;
             }
             
-            if (!confirm('Sind Sie WIRKLICH sicher? Diese Aktion kann nicht rückgängig gemacht werden!')) {
+            if (!confirm(variantenText('dashboard.reset_confirm_2', 'Sind Sie WIRKLICH sicher? Diese Aktion kann nicht rückgängig gemacht werden!'))) {
                 return;
             }
             
@@ -2217,7 +2218,7 @@ END:VEVENT
                     await batch3.commit();
                 }
                 
-                showMessage('verwaltung', '✓ Erfolgreich! Alle Antworten und Zuteilungen wurden gelöscht. Ihre Termine sind wieder verfügbar.', 'success');
+                showMessage('verwaltung', variantenText('dashboard.reset_erfolg', '✓ Erfolgreich! Alle Antworten und Zuteilungen wurden gelöscht. Ihre Termine sind wieder verfügbar.'), 'success');
                 
                 // Aktualisiere die Ansichten - WICHTIG: Neu laden aus DB!
                 allAntworten = [];
@@ -2247,11 +2248,11 @@ END:VEVENT
         }
         
         async function resetAlles() {
-            if (!confirm('⚠️⚠️ ACHTUNG! ⚠️⚠️\n\nDies löscht ALLES:\n- Alle Termine\n- Alle Eltern-Antworten\n- Alle Zuteilungen\n\nWirklich ALLES löschen?')) {
+            if (!confirm(variantenText('dashboard.alles_confirm_1', '⚠️⚠️ ACHTUNG! ⚠️⚠️\n\nDies löscht ALLES:\n- Alle Termine\n- Alle Eltern-Antworten\n- Alle Zuteilungen\n\nWirklich ALLES löschen?'))) {
                 return;
             }
             
-            if (!confirm('LETZTE WARNUNG!\n\nSie löschen wirklich ALLE Ihre Daten.\nDies kann NICHT rückgängig gemacht werden!\n\nFortfahren?')) {
+            if (!confirm(variantenText('dashboard.alles_confirm_2', 'LETZTE WARNUNG!\n\nSie löschen wirklich ALLE Ihre Daten.\nDies kann NICHT rückgängig gemacht werden!\n\nFortfahren?'))) {
                 return;
             }
             
@@ -2286,7 +2287,7 @@ END:VEVENT
                     await batch3.commit();
                 }
                 
-                showMessage('verwaltung', '✓ Erfolgreich! Alle Daten wurden gelöscht. Sie können jetzt von vorne beginnen.', 'success');
+                showMessage('verwaltung', variantenText('dashboard.alles_erfolg', '✓ Erfolgreich! Alle Daten wurden gelöscht. Sie können jetzt von vorne beginnen.'), 'success');
                 
                 // Aktualisiere die Ansichten
                 allTermine = [];
