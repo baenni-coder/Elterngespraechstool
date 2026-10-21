@@ -2,64 +2,119 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Hilfsfunktion: Prüft ob der Benutzer eingeloggt ist
+    // ============================================
+    // Hilfsfunktionen
+    // ============================================
+
+    // Prüft ob der Benutzer eingeloggt ist
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Hilfsfunktion: Prüft ob der Benutzer der Besitzer ist
+    // Prüft ob der Benutzer der Besitzer ist
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Termine: Jeder kann verfügbare Termine lesen (für Eltern-Formular),
-    // aber nur der Ersteller kann sie bearbeiten/löschen
+    // Erlaubte Schul-Domains. Muss mit ERLAUBTE_EMAIL_DOMAINS in lehrer-dashboard.html
+    // übereinstimmen. Weitere Domain ergänzen: '.*@(belose[.]ch|andere-schule[.]ch)$'
+    function hatSchulAdresse() {
+      return request.auth.token.email.lower().matches('.*@(belose[.]ch)$');
+    }
+
+    // Lehrperson = eingeloggt + E-Mail bestätigt + Schul-Adresse.
+    // Die Bestätigung ist nötig, weil Firebase bei der Registrierung nicht prüft,
+    // ob jemand die Adresse wirklich besitzt.
+    function istLehrperson() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && hatSchulAdresse();
+    }
+
+    // ============================================
+    // Collections
+    // ============================================
+
+    // Termine: öffentlich lesbar (Eltern-Formular), schreiben nur die eigene Lehrperson
     match /termine/{terminId} {
-      allow read: if true; // Öffentlich lesbar für Eltern-Formular
-      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow read: if true;
+      allow create: if istLehrperson()
+        && request.resource.data.user_id == request.auth.uid;
+      allow update: if istLehrperson()
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if istLehrperson()
+        && resource.data.user_id == request.auth.uid;
     }
 
-    // Antworten: Jeder kann erstellen (auch ohne Login),
-    // aber nur eingeloggte Lehrer können alle lesen
+    // Antworten: Eltern erstellen ohne Login; lesen/ändern/löschen nur die
+    // Lehrperson, an die die Antwort gerichtet ist (termin_gruppe_id).
     match /antworten/{antwortId} {
-      allow read: if isSignedIn();
-      allow create: if true; // Eltern können ohne Login antworten
-      allow update: if isSignedIn(); // Lehrer können Kindnamen für Merge aktualisieren
-      allow delete: if isSignedIn(); // Lehrer können löschen
+      allow create: if gueltigeNeueAntwort();
+      allow read, delete: if istLehrperson()
+        && resource.data.termin_gruppe_id == request.auth.uid;
+      // Zusammenführen/Trennen ändert den Namen - die Zuordnung zur Lehrperson bleibt fix
+      allow update: if istLehrperson()
+        && resource.data.termin_gruppe_id == request.auth.uid
+        && request.resource.data.termin_gruppe_id == resource.data.termin_gruppe_id;
     }
 
-    // Zuteilungen: Jeder kann sie lesen (für Eltern-Formular zur Prüfung ob Termin frei),
-    // aber nur eingeloggte Lehrer können sie erstellen/löschen
+    // Felder exakt wie in eltern-formular.html -> submitForm()
+    function gueltigeNeueAntwort() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['termin_gruppe_id', 'kindname_encrypted', 'kindname_hash',
+                               'email_encrypted', 'verfuegbare_termine', 'created_at'])
+        && d.termin_gruppe_id is string
+        // Antwort nur an existierende Lehrpersonen (Schlüssel wird beim ersten Login erzeugt)
+        && exists(/databases/$(database)/documents/encryption_keys/$(d.termin_gruppe_id))
+        && d.kindname_encrypted is string && d.kindname_encrypted.size() <= 2000
+        && d.kindname_hash is string && d.kindname_hash.size() <= 100
+        && d.email_encrypted is string && d.email_encrypted.size() <= 2000
+        && d.verfuegbare_termine is list && d.verfuegbare_termine.size() <= 200
+        && d.created_at == request.time;
+    }
+
+    // Zuteilungen: öffentlich lesbar (Formular prüft, ob ein Termin frei ist;
+    // enthält nur IDs), schreiben nur die eigene Lehrperson (user_id).
     match /zuteilungen/{zuteilungId} {
-      allow read: if true; // Öffentlich lesbar
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow read: if true;
+      allow create: if istLehrperson()
+        && request.resource.data.user_id == request.auth.uid;
+      allow update: if istLehrperson()
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid;
+      // Übergangsregel: Zuteilungen von vor 2026-10 haben kein user_id-Feld und
+      // dürfen von jeder Lehrperson gelöscht werden (das Dashboard löscht nur eigene).
+      allow delete: if istLehrperson()
+        && (!('user_id' in resource.data) || resource.data.user_id == request.auth.uid);
     }
 
-    // Settings: Jeder kann lesen (für Eltern-Formular),
-    // aber nur der Besitzer kann schreiben
+    // Settings: öffentlich lesbar (Formular zeigt Name/Mindestanzahl),
+    // schreiben nur der Besitzer. Ohne Bestätigung erlaubt, damit die
+    // Registrierung die Settings anlegen kann.
     match /settings/{userId} {
-      allow read: if true; // Öffentlich lesbar für Eltern-Formular
+      allow read: if true;
       allow write: if isOwner(userId);
     }
 
-    // Encryption Keys: Öffentlich lesbar (für Eltern zum Verschlüsseln),
-    // aber nur der Besitzer kann schreiben
+    // Encryption Keys: öffentlich lesbar (Formular verschlüsselt damit).
+    // Nur einmalig anlegen - ein überschriebener Schlüssel würde alle
+    // bisherigen Antworten unlesbar machen.
     match /encryption_keys/{userId} {
-      allow read: if true; // Öffentlich lesbar für Eltern-Formular
-      allow write: if isOwner(userId);
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update, delete: if false;
     }
 
-    // Mail-Queue: Wird von der Firebase "Trigger Email" Extension verarbeitet.
-    // Authentifizierte Lehrpersonen können Mail-Dokumente erstellen und lesen
-    // (Lesen ist nötig für die Anzeige der Mails-pro-Stunde-Statistik im Dashboard,
-    // damit Lehrpersonen das Hoststar-Versandlimit überwachen können).
-    // Die Extension liest/schreibt mit Admin-Rechten (umgeht diese Rules).
+    // Mail-Queue für die "Trigger Email" Extension (liest/schreibt mit Admin-Rechten).
+    // Lehrpersonen sehen nur ihre eigenen Mails (für die Limit-Anzeige im Dashboard)
+    // und dürfen keinen eigenen Absender setzen (SPF/DKIM, Schutz vor Missbrauch).
     match /mail/{mailId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if istLehrperson()
+        && resource.data._meta.lehrer_uid == request.auth.uid;
+      allow create: if istLehrperson()
+        && request.resource.data._meta.lehrer_uid == request.auth.uid
+        && !('from' in request.resource.data);
       allow update, delete: if false;
     }
   }
