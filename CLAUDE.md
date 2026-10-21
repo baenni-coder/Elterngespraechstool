@@ -329,37 +329,30 @@ elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
 
 ## Firestore Security Rules
 
-```javascript
-match /termine/{terminId} {
-  allow read: if true; // Public readable für Elternformular
-  allow create: if isAuthenticated();
-  allow update, delete: if isOwner(resource.data.user_id);
-}
+Siehe `firestore.rules` (seit 2026-10 deutlich verschärft). Grundsätze:
 
-match /antworten/{antwortId} {
-  allow read: if true;
-  allow create: if true; // Eltern ohne Login
-  allow update, delete: if false;
-}
+- **Lehrperson** = eingeloggt + E-Mail bestätigt (`email_verified`) + Schul-Domain
+  (`hatSchulAdresse()`, aktuell `@belose.ch`). Die Domain-Liste muss mit
+  `ERLAUBTE_EMAIL_DOMAINS` in `lehrer-dashboard.html` übereinstimmen.
+- **Jede Lehrperson sieht/ändert nur eigene Daten**:
+  - `termine`: `user_id`
+  - `antworten`: `termin_gruppe_id` (Eltern erstellen ohne Login, Felder werden validiert)
+  - `zuteilungen`: `user_id` (Altdaten ohne `user_id` dürfen gelöscht werden)
+  - `mail`: `_meta.lehrer_uid`, kein eigenes `from`
+- **Öffentlich lesbar** (Eltern-Formular): `termine`, `zuteilungen` (nur IDs), `settings`, `encryption_keys`
+- `settings` und `encryption_keys` darf der Besitzer auch **ohne** Bestätigung anlegen
+  (Registrierung); Schlüssel können nicht überschrieben werden.
 
-match /zuteilungen/{zuteilungId} {
-  allow read: if true;
-  allow create: if isAuthenticated();
-  allow update: if isAuthenticated();
-  allow delete: if isAuthenticated();
-}
+**Wichtig - Rules sind keine Filter**: Jede Abfrage im Code muss sich selbst auf
+eigene Daten beschränken (z.B. `where('termin_gruppe_id', '==', currentUser.uid)`),
+sonst lehnt Firestore die ganze Abfrage ab.
 
-match /settings/{userId} {
-  allow read: if true; // Public für Elternformular
-  allow write: if isOwner(userId);
-}
+**Tests**: `tests/firestore-rules/` (Emulator, siehe README dort). Nach jeder Änderung
+an Rules oder Abfragen ausführen.
 
-match /mail/{mailId} {
-  allow read: if false;          // Nur Extension (Admin-SDK) liest
-  allow create: if isSignedIn(); // Lehrpersonen können Mails einreihen
-  allow update, delete: if false; // Extension updated mit Admin-Rechten
-}
-```
+**Deployment**: Die Rules werden manuell in der Firebase Console veröffentlicht
+(Firestore → Regeln). Die Datei im Repo ändert live nichts.
+
 
 ## Bekannte Besonderheiten
 
@@ -405,9 +398,9 @@ Hoststar erlaubt **100 ausgehende Mails/Stunde pro Postfach**. Konstanten in `le
 - `MAIL_LIMIT_PER_HOUR = 100`
 - `MAIL_WARN_THRESHOLD = 90` (gelbe Vorwarnung)
 
-`countRecentMails()` zählt `mail`-Dokumente mit `_meta.created_at >= now - 1h`. Wird angezeigt im Zuteilung-Tab (`#mail-rate-status`) und vor `saveZuteilungen()` als Confirm-Dialog geprüft.
+`countRecentMails()` zählt **eigene** `mail`-Dokumente (`_meta.lehrer_uid`) mit `_meta.created_at >= now - 1h` (Zeitfilter clientseitig). Wird angezeigt im Zuteilung-Tab (`#mail-rate-status`) und vor `saveZuteilungen()` als Confirm-Dialog geprüft.
 
-Damit die Zählung funktioniert, hat die `mail`-Collection in den Firestore-Rules `read: if isSignedIn()` (Lehrpersonen sehen Mails anderer Lehrer:innen - akzeptabel, da Kolleg:innen am gleichen Schulhaus). Falls strengere Trennung gefordert wird, müsste man auf eine separate Counter-Doc-Architektur mit Cloud Function umsteigen.
+Mails von Kolleg:innen sind aus Datenschutzgründen nicht lesbar und werden daher nicht mitgezählt - die Anzeige kann das gemeinsame Postfach-Limit also unterschätzen. Mail-Dokumente haben `expire_at` (+30 Tage) und werden per Firestore-TTL-Policy automatisch gelöscht.
 
 ## Häufige Änderungsanfragen
 
