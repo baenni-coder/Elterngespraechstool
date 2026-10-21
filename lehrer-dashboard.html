@@ -892,12 +892,13 @@
 
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFaq(this)">
-                            <span>Was bedeutet die Anzeige "📧 Mail-Versand: X/100 in letzter Stunde"?</span>
+                            <span>Was bedeutet die Anzeige "📧 Mail-Versand: X/100 eigene Mails in letzter Stunde"?</span>
                             <span class="faq-arrow">▼</span>
                         </div>
                         <div class="faq-answer">
                             <div class="faq-answer-content">
-                                <p>Unser SMTP-Server (Hoststar) erlaubt maximal <strong>100 ausgehende Mails pro Stunde</strong> pro Postfach. Damit Sie nicht versehentlich an dieses Limit stoßen, zeigen wir im Zuteilung-Tab an, wie viele Mails bereits versendet wurden und wie viele Sie gerade dazu einreihen würden.</p>
+                                <p>Unser SMTP-Server (Hoststar) erlaubt maximal <strong>100 ausgehende Mails pro Stunde</strong> pro Postfach. Damit Sie nicht versehentlich an dieses Limit stoßen, zeigen wir im Zuteilung-Tab an, wie viele Mails Sie in der letzten Stunde bereits versendet haben und wie viele Sie gerade dazu einreihen würden.</p>
+                                <p style="margin-top: 10px;"><strong>Wichtig:</strong> Aus Datenschutzgründen sehen Sie nur Ihre eigenen Mails. Mails von Kolleg:innen zählen zwar ebenfalls zum gemeinsamen Limit, werden in der Anzeige aber nicht mitgezählt.</p>
                                 <p style="margin-top: 10px;"><strong>Was tun, wenn das Limit zu knapp wird?</strong></p>
                                 <ul>
                                     <li><strong>Mit Kolleg:innen koordinieren:</strong> Versand zeitlich verteilen (mehrere Klassen in derselben Stunde gleichzeitig zuzuteilen ist ungünstig).</li>
@@ -1053,6 +1054,12 @@
         // aber Zustellung verzögert sich um Stunden). Werte zur Schwellenwertbestimmung im Dashboard.
         const MAIL_LIMIT_PER_HOUR = 100;
         const MAIL_WARN_THRESHOLD = 90; // ab hier Vorwarnung
+        const MAIL_AUFBEWAHRUNG_TAGE = 30; // TTL: Mail-Dokumente werden danach von Firestore gelöscht (expire_at)
+
+        // Firestore-Timestamp (oder null bei noch ausstehendem serverTimestamp) -> Millisekunden
+        function zeitstempelMs(ts) {
+            return ts && typeof ts.toMillis === 'function' ? ts.toMillis() : 0;
+        }
 
         // Beim Laden prüfen ob eingeloggt
         window.onload = async () => {
@@ -1327,13 +1334,17 @@
                     return;
                 }
 
-                // Hole alle Antworten
+                // Hole nur EIGENE Antworten (die Security Rules erlauben nur diese).
+                // Sortierung (neueste zuerst) clientseitig - so braucht es keinen Composite-Index.
                 const snapshot = await db.collection('antworten')
-                    .orderBy('created_at', 'desc')
+                    .where('termin_gruppe_id', '==', currentUser.uid)
                     .get();
+                const sortedDocs = snapshot.docs.slice().sort((a, b) =>
+                    zeitstempelMs(b.data().created_at) - zeitstempelMs(a.data().created_at)
+                );
 
                 // Filtere nur Antworten die zu aktuellen Terminen gehören
-                const filteredAntworten = snapshot.docs
+                const filteredAntworten = sortedDocs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
                     .filter(antwort => {
                         return antwort.verfuegbare_termine.some(terminId => meinTerminIds.includes(terminId));
@@ -1632,7 +1643,8 @@
                 if (recentCount !== null && recentCount + toSend > MAIL_LIMIT_PER_HOUR) {
                     const proceed = confirm(
                         `⛔ Versandlimit-Warnung\n\n` +
-                        `In der letzten Stunde wurden bereits ${recentCount} Mails eingereiht.\n` +
+                        `In der letzten Stunde wurden bereits ${recentCount} eigene Mails eingereiht.\n` +
+                        `(Mails von Kolleg:innen sind nicht mitgezählt.)\n` +
                         `Mit dieser Aktion kämen ${toSend} weitere dazu (Total: ${recentCount + toSend}).\n\n` +
                         `Hoststar erlaubt maximal ${MAIL_LIMIT_PER_HOUR} Mails pro Stunde. ` +
                         `Mails über dem Limit werden vom SMTP-Server temporär blockiert - ` +
@@ -1649,7 +1661,8 @@
                 } else if (recentCount !== null && recentCount + toSend >= MAIL_WARN_THRESHOLD) {
                     const proceed = confirm(
                         `⚠️ Versandlimit knapp\n\n` +
-                        `In der letzten Stunde: ${recentCount} Mails eingereiht.\n` +
+                        `In der letzten Stunde: ${recentCount} eigene Mails eingereiht.\n` +
+                        `(Mails von Kolleg:innen sind nicht mitgezählt.)\n` +
                         `Mit dieser Aktion kommen ${toSend} dazu (Total: ${recentCount + toSend} / ${MAIL_LIMIT_PER_HOUR}).\n\n` +
                         `Limit wird nicht überschritten, ist aber knapp. Fortfahren?`
                     );
@@ -1710,6 +1723,7 @@
                             zuteilungenData.push({
                                 termin_id: terminId,
                                 antwort_id: antwort.id,
+                                user_id: currentUser.uid, // für die Security Rules (nur Besitzer:in darf ändern/löschen)
                                 status: 'zugeteilt'
                             });
                         });
@@ -1776,15 +1790,20 @@
             }
         }
 
-        // Zählt Mail-Dokumente, die in der letzten Stunde eingereiht wurden.
+        // Zählt EIGENE Mail-Dokumente, die in der letzten Stunde eingereiht wurden.
         // Wird für die Hoststar-Versandlimit-Warnung verwendet (100 Mails/h).
+        // Mails von Kolleg:innen sind aus Datenschutzgründen nicht lesbar und daher nicht mitgezählt.
+        // Zeitfilter clientseitig - so braucht es keinen Composite-Index (dank TTL max. 30 Tage Mails).
         async function countRecentMails() {
             try {
-                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const oneHourAgo = Date.now() - 60 * 60 * 1000;
                 const snapshot = await db.collection('mail')
-                    .where('_meta.created_at', '>=', firebase.firestore.Timestamp.fromDate(oneHourAgo))
+                    .where('_meta.lehrer_uid', '==', currentUser.uid)
                     .get();
-                return snapshot.size;
+                return snapshot.docs.filter(doc => {
+                    const meta = doc.data()._meta || {};
+                    return zeitstempelMs(meta.created_at) >= oneHourAgo;
+                }).length;
             } catch (error) {
                 console.warn('Mail-Rate konnte nicht ermittelt werden:', error);
                 return null;
@@ -1829,13 +1848,13 @@
 
                 if (totalAfter > MAIL_LIMIT_PER_HOUR) {
                     bgColor = '#f8d7da'; textColor = '#721c24'; icon = '⛔';
-                    message = `<strong>Versandlimit würde überschritten:</strong> ${recent}/${MAIL_LIMIT_PER_HOUR} Mails in letzter Stunde, ${toSend} würden jetzt dazukommen. Hoststar erlaubt ${MAIL_LIMIT_PER_HOUR}/Stunde.`;
+                    message = `<strong>Versandlimit würde überschritten:</strong> ${recent}/${MAIL_LIMIT_PER_HOUR} eigene Mails in letzter Stunde, ${toSend} würden jetzt dazukommen. Hoststar erlaubt ${MAIL_LIMIT_PER_HOUR}/Stunde.`;
                 } else if (totalAfter >= MAIL_WARN_THRESHOLD) {
                     bgColor = '#fff3cd'; textColor = '#856404'; icon = '⚠️';
-                    message = `<strong>Limit knapp:</strong> ${recent}/${MAIL_LIMIT_PER_HOUR} Mails in letzter Stunde, ${toSend} würden dazukommen.`;
+                    message = `<strong>Limit knapp:</strong> ${recent}/${MAIL_LIMIT_PER_HOUR} eigene Mails in letzter Stunde, ${toSend} würden dazukommen.`;
                 } else {
                     bgColor = '#d4edda'; textColor = '#155724'; icon = '📧';
-                    message = `Mail-Versand: ${recent}/${MAIL_LIMIT_PER_HOUR} in letzter Stunde` + (toSend > 0 ? ` · ${toSend} würden jetzt versendet` : '');
+                    message = `Mail-Versand: ${recent}/${MAIL_LIMIT_PER_HOUR} eigene Mails in letzter Stunde` + (toSend > 0 ? ` · ${toSend} würden jetzt versendet` : '');
                 }
 
                 statusDiv.style.background = bgColor;
@@ -1916,6 +1935,11 @@ ${absenderName}`;
                                     contentType: 'text/calendar; charset=utf-8; method=PUBLISH'
                                 }]
                             },
+                            // TTL-Feld: Firestore löscht das Dokument nach Ablauf automatisch
+                            // (TTL-Policy auf Collection "mail", Feld "expire_at" - siehe README)
+                            expire_at: firebase.firestore.Timestamp.fromDate(
+                                new Date(Date.now() + MAIL_AUFBEWAHRUNG_TAGE * 24 * 60 * 60 * 1000)
+                            ),
                             _meta: {
                                 lehrer_uid: currentUser.uid,
                                 termin_id: termin.id,
@@ -2177,20 +2201,18 @@ END:VEVENT
         }
         
         // Liefert die Antwort- und Zuteilungs-Dokumente, die zur eingeloggten Lehrperson gehören.
-        // Gleiches Kriterium wie loadAntworten(): Antwort enthält einen eigenen Termin
-        // (zusätzlich termin_gruppe_id, falls vorhanden - auch ältere Daten ohne Feld werden erkannt).
+        // Antworten: gleiche Abfrage wie loadAntworten() (termin_gruppe_id).
+        // Zuteilungen: zu eigenen Terminen oder eigenen Antworten (Collection ist öffentlich lesbar).
         async function ladeEigeneAntwortenUndZuteilungen() {
             const termineSnapshot = await db.collection('termine')
                 .where('user_id', '==', currentUser.uid)
                 .get();
             const eigeneTerminIds = new Set(termineSnapshot.docs.map(doc => doc.id));
 
-            const antwortenSnapshot = await db.collection('antworten').get();
-            const antworten = antwortenSnapshot.docs.filter(doc => {
-                const data = doc.data();
-                return data.termin_gruppe_id === currentUser.uid ||
-                    (data.verfuegbare_termine || []).some(terminId => eigeneTerminIds.has(terminId));
-            });
+            const antwortenSnapshot = await db.collection('antworten')
+                .where('termin_gruppe_id', '==', currentUser.uid)
+                .get();
+            const antworten = antwortenSnapshot.docs;
             const eigeneAntwortIds = new Set(antworten.map(doc => doc.id));
 
             const zuteilungenSnapshot = await db.collection('zuteilungen').get();
