@@ -55,6 +55,7 @@ firebase.initializeApp(firebaseConfig);
 
 // Firebase Services
 const auth = firebase.auth();
+auth.languageCode = 'de'; // Sprache der Firebase-Mails (z.B. Bestätigungslink)
 const db = firebase.firestore();
 
 // Hilfsfunktionen
