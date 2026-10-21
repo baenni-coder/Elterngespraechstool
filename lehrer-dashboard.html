@@ -2176,6 +2176,32 @@ END:VEVENT
             }, 3000);
         }
         
+        // Liefert die Antwort- und Zuteilungs-Dokumente, die zur eingeloggten Lehrperson gehören.
+        // Gleiches Kriterium wie loadAntworten(): Antwort enthält einen eigenen Termin
+        // (zusätzlich termin_gruppe_id, falls vorhanden - auch ältere Daten ohne Feld werden erkannt).
+        async function ladeEigeneAntwortenUndZuteilungen() {
+            const termineSnapshot = await db.collection('termine')
+                .where('user_id', '==', currentUser.uid)
+                .get();
+            const eigeneTerminIds = new Set(termineSnapshot.docs.map(doc => doc.id));
+
+            const antwortenSnapshot = await db.collection('antworten').get();
+            const antworten = antwortenSnapshot.docs.filter(doc => {
+                const data = doc.data();
+                return data.termin_gruppe_id === currentUser.uid ||
+                    (data.verfuegbare_termine || []).some(terminId => eigeneTerminIds.has(terminId));
+            });
+            const eigeneAntwortIds = new Set(antworten.map(doc => doc.id));
+
+            const zuteilungenSnapshot = await db.collection('zuteilungen').get();
+            const zuteilungen = zuteilungenSnapshot.docs.filter(doc => {
+                const data = doc.data();
+                return eigeneTerminIds.has(data.termin_id) || eigeneAntwortIds.has(data.antwort_id);
+            });
+
+            return { antworten, zuteilungen };
+        }
+
         async function resetAntworten() {
             if (!confirm(variantenText('dashboard.reset_confirm_1', '⚠️ ACHTUNG!\n\nDies löscht ALLE Eltern-Antworten und Zuteilungen.\nIhre Termine bleiben erhalten.\n\nWirklich fortfahren?'))) {
                 return;
@@ -2186,21 +2212,20 @@ END:VEVENT
             }
             
             try {
-                // Lösche alle Zuteilungen
-                const zuteilungenSnapshot = await db.collection('zuteilungen').get();
-                if (zuteilungenSnapshot.docs.length > 0) {
+                // Nur EIGENE Antworten/Zuteilungen - nie die von anderen Lehrpersonen!
+                const eigene = await ladeEigeneAntwortenUndZuteilungen();
+                if (eigene.zuteilungen.length > 0) {
                     const batch1 = db.batch();
-                    zuteilungenSnapshot.docs.forEach(doc => {
+                    eigene.zuteilungen.forEach(doc => {
                         batch1.delete(doc.ref);
                     });
                     await batch1.commit();
                 }
 
-                // Lösche alle Antworten
-                const antwortenSnapshot = await db.collection('antworten').get();
-                if (antwortenSnapshot.docs.length > 0) {
+                // Lösche eigene Antworten
+                if (eigene.antworten.length > 0) {
                     const batch2 = db.batch();
-                    antwortenSnapshot.docs.forEach(doc => {
+                    eigene.antworten.forEach(doc => {
                         batch2.delete(doc.ref);
                     });
                     await batch2.commit();
@@ -2258,19 +2283,19 @@ END:VEVENT
             
             try {
                 // Lösche in der richtigen Reihenfolge
-                const zuteilungenSnapshot = await db.collection('zuteilungen').get();
-                if (zuteilungenSnapshot.docs.length > 0) {
+                // Nur EIGENE Antworten/Zuteilungen - nie die von anderen Lehrpersonen!
+                const eigene = await ladeEigeneAntwortenUndZuteilungen();
+                if (eigene.zuteilungen.length > 0) {
                     const batch1 = db.batch();
-                    zuteilungenSnapshot.docs.forEach(doc => {
+                    eigene.zuteilungen.forEach(doc => {
                         batch1.delete(doc.ref);
                     });
                     await batch1.commit();
                 }
 
-                const antwortenSnapshot = await db.collection('antworten').get();
-                if (antwortenSnapshot.docs.length > 0) {
+                if (eigene.antworten.length > 0) {
                     const batch2 = db.batch();
-                    antwortenSnapshot.docs.forEach(doc => {
+                    eigene.antworten.forEach(doc => {
                         batch2.delete(doc.ref);
                     });
                     await batch2.commit();
