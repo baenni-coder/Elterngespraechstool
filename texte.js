@@ -41,7 +41,60 @@ const MAG_TEXTE = {
     'login.seitentitel': 'Login Schulleitung',
     'login.titel': '💼 Login Schulleitung',
     'login.untertitel': 'Melde dich an, um Termine zu verwalten',
-    'login.erfolg': '✓ Erfolgreich angemeldet! Du wirst weitergeleitet...'
+    'login.erfolg': '✓ Erfolgreich angemeldet! Du wirst weitergeleitet...',
+
+    // ---------- lehrer-dashboard.html (Teil 1: Oberfläche) ----------
+    // Hinweise zu "Elternteilen" erscheinen nur bei mehreren Antworten pro Name
+    // und werden mit der Logik "neue Antwort ersetzt alte" hinfällig.
+    'dashboard.seitentitel': 'MAG-Dashboard',
+    'dashboard.titel': '💼 MAG-Dashboard',
+    'dashboard.tab_antworten': '📨 Antworten (<span id="antworten-count">0</span>)',
+
+    // Tab "Meine Termine"
+    'dashboard.termine_intro': 'Erstelle Termine für Mitarbeitendengespräche.',
+    'dashboard.label_name': 'Dein Name (optional)',
+    'dashboard.hinweis_name': 'Wird den Mitarbeitenden im Formular angezeigt, damit sie die Formulare nicht verwechseln.',
+    'dashboard.label_min_termine': 'Mindestanzahl Termine (die Mitarbeitende auswählen müssen)',
+    'dashboard.hinweis_min_termine': 'Die Mitarbeitenden müssen mindestens diese Anzahl an Terminen ankreuzen.',
+    'dashboard.hinweis_dauer': 'Wird beim Erstellen neuer Termine automatisch vorausgefüllt. Du kannst den Wert bei jedem einzelnen Termin überschreiben.',
+    'dashboard.label_kontakt_email': 'Kontakt-E-Mail für Rückfragen (optional)',
+    'dashboard.hinweis_kontakt_email': 'Wenn Mitarbeitende auf die Termin-Bestätigung antworten, landet die Nachricht an dieser Adresse. Wenn leer, wird deine Login-E-Mail verwendet.<br><br><strong>Hinweis:</strong> Der angezeigte Absender ist immer die zentrale Schul-Adresse - das ist technisch notwendig für die zuverlässige Zustellung (Spam-Schutz).',
+    'dashboard.titel_termine_liste': 'Deine Termine',
+    'dashboard.fehler_min_termine': 'Bitte gib für die Mindestanzahl Termine eine Zahl zwischen 1 und 10 ein.',
+    'dashboard.fehler_dauer': 'Bitte gib für die Standardgesprächsdauer eine Zahl zwischen 5 und 120 Minuten ein.',
+    'dashboard.fehler_kontakt_email': 'Bitte gib eine gültige Kontakt-E-Mail-Adresse ein oder lass das Feld leer.',
+
+    // Tab "Link teilen"
+    'dashboard.share_titel': 'Link mit Mitarbeitenden teilen',
+    'dashboard.share_intro': 'Sende diesen Link an die Mitarbeitenden, damit sie ihre Verfügbarkeit angeben können.',
+    'dashboard.share_box_titel': '📎 Link zum Formular',
+    'dashboard.share_box_text': 'Kopiere diesen Link und sende ihn per E-Mail an die Mitarbeitenden:',
+    'dashboard.share_tipp': '<strong>💡 Tipp:</strong> Die Mitarbeitenden brauchen kein Konto. Sie können direkt über den Link ihre Verfügbarkeit angeben.',
+    'dashboard.link_kopiert': '✓ Link kopiert! Du kannst ihn jetzt in eine E-Mail einfügen.',
+
+    // Tab "Antworten"
+    'dashboard.antworten_titel': 'Antworten',
+    'dashboard.antworten_intro': 'Übersicht der Mitarbeitenden, die ihre Verfügbarkeit angegeben haben.',
+
+    // Tab "Zuteilung"
+    'dashboard.zuteilung_intro': 'Weise jedem Termin die gewünschte Person zu.',
+    'dashboard.zuteilung_anleitung': '<strong>Anleitung:</strong> Klicke auf eine Person, um sie einem Termin zuzuteilen. Bereits zugeteilte Personen werden bei anderen Terminen ausgegraut.',
+    'dashboard.zuteilung_keine_daten': 'Bitte erstelle zuerst Termine und warte auf Antworten.',
+    'dashboard.zuteilung_niemand': 'Niemand hat diesen Termin gewählt',
+    'dashboard.zuteilung_leer': 'Bitte teile mindestens einer Person einen Termin zu.',
+
+    // Tab "Verwaltung"
+    'dashboard.verwaltung_intro': 'Verwaltungsfunktionen für deine Mitarbeitendengespräche.',
+    'dashboard.reset_titel': 'Für neue MAG-Runde vorbereiten',
+    'dashboard.reset_text': 'Verwende diese Funktion, wenn du eine neue MAG-Runde starten möchtest.<br><strong>Was wird gelöscht:</strong>',
+    'dashboard.reset_liste_antworten': 'Alle Antworten',
+    'dashboard.reset_bleibt': '<strong>Was bleibt erhalten:</strong> Deine Termine (werden wieder als verfügbar markiert)',
+    'dashboard.reset_confirm_1': '⚠️ ACHTUNG!\n\nDies löscht ALLE Antworten und Zuteilungen.\nDeine Termine bleiben erhalten.\n\nWirklich fortfahren?',
+    'dashboard.reset_confirm_2': 'Bist du WIRKLICH sicher? Diese Aktion kann nicht rückgängig gemacht werden!',
+    'dashboard.reset_erfolg': '✓ Erfolgreich! Alle Antworten und Zuteilungen wurden gelöscht. Deine Termine sind wieder verfügbar.',
+    'dashboard.alles_confirm_1': '⚠️⚠️ ACHTUNG! ⚠️⚠️\n\nDies löscht ALLES:\n- Alle Termine\n- Alle Antworten\n- Alle Zuteilungen\n\nWirklich ALLES löschen?',
+    'dashboard.alles_confirm_2': 'LETZTE WARNUNG!\n\nDu löschst wirklich ALLE deine Daten.\nDies kann NICHT rückgängig gemacht werden!\n\nFortfahren?',
+    'dashboard.alles_erfolg': '✓ Erfolgreich! Alle Daten wurden gelöscht. Du kannst jetzt von vorne beginnen.'
 };
 
 function istMagVariante() {
