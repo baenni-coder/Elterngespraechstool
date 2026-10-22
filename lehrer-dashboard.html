@@ -2854,6 +2854,17 @@ END:VEVENT
             }
         }
 
+        // Felder für einen neuen Kindnamen (Zusammenführen/Trennen): verschlüsselter Name und
+        // Hash für die Gruppierung - genau wie im Eltern-Formular. Ein evtl. vorhandenes
+        // Klartext-Feld "kindname" (Altdaten bzw. früherer Fehler) wird dabei entfernt.
+        function kindnameFelder(name) {
+            return {
+                kindname_encrypted: crypto.encrypt(name, encryptionKey),
+                kindname_hash: crypto.hash(name),
+                kindname: firebase.firestore.FieldValue.delete()
+            };
+        }
+
         async function confirmMerge() {
             const finalKindname = document.getElementById('modal-kindname').value.trim();
 
@@ -2889,7 +2900,7 @@ END:VEVENT
                 const batch = db.batch();
                 antwortIds.forEach(antwortId => {
                     const docRef = db.collection('antworten').doc(antwortId);
-                    batch.update(docRef, { kindname: finalKindname });
+                    batch.update(docRef, kindnameFelder(finalKindname));
                 });
 
                 await batch.commit();
@@ -3026,7 +3037,7 @@ END:VEVENT
                 const batch = db.batch();
                 updates.forEach(update => {
                     const docRef = db.collection('antworten').doc(update.antwortId);
-                    batch.update(docRef, { kindname: update.newName });
+                    batch.update(docRef, kindnameFelder(update.newName));
                 });
 
                 await batch.commit();
