@@ -592,6 +592,15 @@
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
 
+                    <!-- Gesprächsort -->
+                    <div class="form-group">
+                        <label>Gesprächsort (optional)</label>
+                        <input type="text" id="gespraechsort" maxlength="100" placeholder="z.B. Schulzimmer 12" data-mag-placeholder="dashboard.platzhalter_ort" style="width: 100%; max-width: 400px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <p style="color: #666; font-size: 13px; margin-top: 8px;">Wird in der Bestätigungsmail und im Kalendereintrag angezeigt. Wenn leer, steht im Kalendereintrag „Schule“.</p>
+                    </div>
+
+                    <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
+
                     <!-- E-Mail Einstellungen -->
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
@@ -1049,6 +1058,7 @@
         let allTermine = [];
         let allAntworten = [];
         let assignments = {}; // { antwortId: terminId }
+        let einstellungen = {}; // zuletzt geladene/gespeicherte Settings (für Vorlagen und Kalenderdateien)
         let mergeMode = false; // Merge-Modus aktiv?
         let selectedForMerge = []; // Array von ausgewählten Kindnamen für Merge
 
@@ -1220,6 +1230,12 @@
                 const doc = await db.collection('settings').doc(currentUser.uid).get();
                 if (doc.exists) {
                     const settings = doc.data();
+                    einstellungen = settings;
+
+                    // Gesprächsort
+                    if (settings.gespraechsort) {
+                        document.getElementById('gespraechsort').value = settings.gespraechsort;
+                    }
 
                     // Name der Lehrperson
                     if (settings.teacher_name) {
@@ -1276,6 +1292,7 @@
             const teacherName = document.getElementById('teacher-name').value.trim();
             const autoEmailEnabled = document.getElementById('auto-email-enabled').checked;
             const kontaktEmail = document.getElementById('kontakt-email').value.trim();
+            const gespraechsortWert = document.getElementById('gespraechsort').value.trim();
 
             if (kontaktEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(kontaktEmail)) {
                 alert(variantenText('dashboard.fehler_kontakt_email', 'Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein oder lassen Sie das Feld leer.'));
@@ -1288,12 +1305,14 @@
                 standard_dauer_minuten: standardDauer,
                 auto_email_enabled: autoEmailEnabled,
                 kontakt_email: kontaktEmail || null,
+                gespraechsort: gespraechsortWert || null,
                 absender_email: firebase.firestore.FieldValue.delete(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             try {
                 await db.collection('settings').doc(currentUser.uid).set(settingsData, { merge: true });
+                einstellungen = { ...einstellungen, ...settingsData };
 
                 // Termin-Formular auf neuen Standardwert setzen (nur wenn Lehrperson nichts anderes eingegeben hat)
                 document.getElementById('termin-dauer').value = standardDauer;
@@ -1884,7 +1903,9 @@
                 // Reply-To: persönliche Adresse der Lehrperson (Eltern-Antworten landen dort).
                 // Backward-Compat: alter Feldname absender_email wird noch berücksichtigt.
                 const replyToEmail = settings.kontakt_email || settings.absender_email || currentUser.email;
-                const absenderName = settings.teacher_name || 'Elterngespräch';
+                const absenderName = settings.teacher_name || variantenText('mail.absender_fallback', 'Elterngespräch');
+                const ort = (settings.gespraechsort || '').trim();
+                einstellungen = settings; // aktuelle Settings auch für die Kalenderdatei
 
                 console.log('Erstelle Mail-Dokumente für Trigger Email Extension...');
 
@@ -1907,22 +1928,23 @@
                     });
 
                     for (const antwort of gruppe.antworten) {
-                        const subject = `Ihr Termin für das Elterngespräch: ${antwort.kindname}`;
-                        const text = `Guten Tag
+                        const subject = variantenText('mail.betreff', `Ihr Termin für das Elterngespräch: ${antwort.kindname}`);
+                        const ortZeile = ort ? `\nOrt: ${ort}` : '';
+                        const text = variantenText('mail.text', `Guten Tag
 
 Hiermit bestätige ich den Termin für unser Elterngespräch:
 
 Kind: ${antwort.kindname}
 Datum: ${formattedDate}
 Uhrzeit: ${termin.zeit} Uhr
-Dauer: ${termin.dauer_minuten} Minuten
+Dauer: ${termin.dauer_minuten} Minuten${ortZeile}
 
 Im Anhang finden Sie den Termin als Kalender-Datei (.ics), die Sie direkt in Ihren Kalender importieren können.
 
 Ich freue mich auf unser Gespräch.
 
 Mit freundlichen Grüssen
-${absenderName}`;
+${absenderName}`, antwort.kindname, formattedDate, termin.zeit, termin.dauer_minuten, ort, absenderName);
 
                         const icsContent = generateICS(termin, antwort);
                         const safeName = antwort.kindname.replace(/[^a-zA-Z0-9_-]+/g, '_');
@@ -1934,7 +1956,7 @@ ${absenderName}`;
                                 subject: subject,
                                 text: text,
                                 attachments: [{
-                                    filename: `Elterngespraech_${safeName}.ics`,
+                                    filename: variantenText('datei.ics_einzel', `Elterngespraech_${safeName}.ics`, safeName),
                                     content: icsContent,
                                     contentType: 'text/calendar; charset=utf-8; method=PUBLISH'
                                 }]
@@ -1984,15 +2006,15 @@ ${absenderName}`;
                 } else if (emailResult.success > 0 && emailResult.error === 0) {
                     html += '<div class="alert alert-success" style="margin-top: 10px;"><strong>✓ ' + emailResult.success + ' E-Mail(s) in die Versand-Warteschlange gestellt.</strong><br>Die Zustellung erfolgt im Hintergrund (üblicherweise innerhalb weniger Sekunden).</div>';
                 } else if (emailResult.success > 0 && emailResult.error > 0) {
-                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Teilerfolg:</strong> ' + emailResult.success + ' E-Mail(s) eingereiht, ' + emailResult.error + ' fehlgeschlagen. Bitte prüfen Sie die Konsole.</div>';
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ Teilerfolg:</strong> ' + emailResult.success + ' E-Mail(s) eingereiht, ' + emailResult.error + ' fehlgeschlagen. ' + variantenText('dashboard.konsole_pruefen', 'Bitte prüfen Sie die Konsole.') + '</div>';
                 } else if (emailResult.error > 0) {
-                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ E-Mail-Einreihung fehlgeschlagen:</strong> ' + emailResult.error + ' E-Mail(s) konnten nicht erstellt werden. Bitte prüfen Sie die Konsole.</div>';
+                    html += '<div class="alert alert-warning" style="margin-top: 10px;"><strong>⚠ E-Mail-Einreihung fehlgeschlagen:</strong> ' + emailResult.error + ' E-Mail(s) konnten nicht erstellt werden. ' + variantenText('dashboard.konsole_pruefen', 'Bitte prüfen Sie die Konsole.') + '</div>';
                 }
             }
 
             html += '<div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 20px;">';
             html += '<h3 style="margin-bottom: 15px; color: #667eea;">📧 E-Mail-Benachrichtigungen</h3>';
-            html += '<p style="color: #666; margin-bottom: 20px;">Kopieren Sie die E-Mail-Texte und senden Sie sie an die Eltern:</p>';
+            html += '<p style="color: #666; margin-bottom: 20px;">' + variantenText('dashboard.vorlagen_intro', 'Kopieren Sie die E-Mail-Texte und senden Sie sie an die Eltern:') + '</p>';
 
             // Für jeden zugeteilten Termin (assignments enthält jetzt hash -> terminId)
             Object.keys(assignments).forEach(hash => {
@@ -2011,18 +2033,20 @@ ${absenderName}`;
 
                 // Erstelle für jedes Elternteil in der Gruppe eine E-Mail-Vorlage
                 gruppe.antworten.forEach(antwort => {
-                    const emailText = `Guten Tag
+                    const ort = (einstellungen.gespraechsort || '').trim();
+                    const ortZeile = ort ? `\nOrt: ${ort}` : '';
+                    const emailText = variantenText('mail.vorlage', `Guten Tag
 
 Hiermit bestätige ich den Termin für unser Elterngespräch:
 
 Kind: ${antwort.kindname}
 Datum: ${formattedDate}
 Uhrzeit: ${termin.zeit} Uhr
-Dauer: ${termin.dauer_minuten} Minuten
+Dauer: ${termin.dauer_minuten} Minuten${ortZeile}
 
 Ich freue mich auf unser Gespräch.
 
-Mit freundlichen Grüssen`;
+Mit freundlichen Grüssen`, antwort.kindname, formattedDate, termin.zeit, termin.dauer_minuten, ort);
 
                     html += `
                         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0;">
@@ -2042,15 +2066,15 @@ Mit freundlichen Grüssen`;
             
             // Gesamt-Kalender für Lehrperson
             html += '<div style="background: #e8f4f8; padding: 25px; border-radius: 8px; margin-top: 20px;">';
-            html += '<h3 style="margin-bottom: 15px; color: #667eea;">📅 Ihre Termine (Gesamt-Kalender)</h3>';
-            html += '<p style="color: #666; margin-bottom: 15px;">Laden Sie alle zugeteilten Termine als eine Kalender-Datei herunter:</p>';
+            html += '<h3 style="margin-bottom: 15px; color: #667eea;">' + variantenText('dashboard.gesamt_titel', '📅 Ihre Termine (Gesamt-Kalender)') + '</h3>';
+            html += '<p style="color: #666; margin-bottom: 15px;">' + variantenText('dashboard.gesamt_text', 'Laden Sie alle zugeteilten Termine als eine Kalender-Datei herunter:') + '</p>';
             html += '<button class="btn btn-success" onclick="downloadAllICS()">📥 Alle Termine herunterladen (.ics)</button>';
             html += '</div>';
             
             // CSV Export
             html += '<div style="background: #fff3cd; padding: 25px; border-radius: 8px; margin-top: 20px;">';
             html += '<h3 style="margin-bottom: 15px; color: #856404;">📊 Export für Serien-E-Mail</h3>';
-            html += '<p style="color: #856404; margin-bottom: 15px;">Exportieren Sie die Daten als CSV für Mail-Merge (z.B. in Outlook):</p>';
+            html += '<p style="color: #856404; margin-bottom: 15px;">' + variantenText('dashboard.csv_text', 'Exportieren Sie die Daten als CSV für Mail-Merge (z.B. in Outlook):') + '</p>';
             html += '<button class="btn btn-primary" onclick="downloadCSV()">📥 Als CSV exportieren</button>';
             html += '</div>';
             
@@ -2087,17 +2111,18 @@ Mit freundlichen Grüssen`;
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Elterngespraech_${antwort.kindname.replace(/\s+/g, '_')}.ics`;
+            const safeName = antwort.kindname.replace(/\s+/g, '_');
+            link.download = variantenText('datei.ics_einzel', `Elterngespraech_${safeName}.ics`, safeName);
             link.click();
         }
         
         function downloadAllICS() {
             let icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Elterngespräch-Planer//DE
+PRODID:${variantenText('ics.prodid', '-//Elterngespräch-Planer//DE')}
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:Elterngespräche
+X-WR-CALNAME:${variantenText('ics.kalendername', 'Elterngespräche')}
 X-WR-TIMEZONE:Europe/Zurich
 `;
 
@@ -2110,7 +2135,7 @@ X-WR-TIMEZONE:Europe/Zurich
 
                 // Erstelle Event für jedes Elternteil in der Gruppe
                 gruppe.antworten.forEach(antwort => {
-                    const event = generateICSEvent(termin, antwort);
+                    const event = generateICSEvent(termin, antwort, true); // Gesamt-Kalender der Lehrperson
                     icsContent += event;
                 });
             });
@@ -2120,7 +2145,7 @@ X-WR-TIMEZONE:Europe/Zurich
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'Elterngespraeche_Alle.ics';
+            link.download = variantenText('datei.ics_alle', 'Elterngespraeche_Alle.ics');
             link.click();
         }
         
@@ -2129,13 +2154,24 @@ X-WR-TIMEZONE:Europe/Zurich
             
             return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Elterngespräch-Planer//DE
+PRODID:${variantenText('ics.prodid', '-//Elterngespräch-Planer//DE')}
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 ${event}END:VCALENDAR`;
         }
         
-        function generateICSEvent(termin, antwort) {
+        // Text für ICS-Felder escapen (RFC 5545: Backslash, Semikolon, Komma, Zeilenumbruch)
+        function icsText(text) {
+            return String(text)
+                .replace(/\\/g, '\\\\')
+                .replace(/;/g, '\\;')
+                .replace(/,/g, '\\,')
+                .replace(/\r?\n/g, '\\n');
+        }
+
+        // fuerLehrperson: true = Gesamt-Kalender der Lehrperson, false = Datei für Eltern/Mitarbeitende
+        // (in der Eltern-Variante sind beide Fassungen identisch)
+        function generateICSEvent(termin, antwort, fuerLehrperson = false) {
             const datum = new Date(termin.datum + 'T' + termin.zeit);
             const endDatum = new Date(datum.getTime() + termin.dauer_minuten * 60000);
             
@@ -2143,7 +2179,17 @@ ${event}END:VCALENDAR`;
                 return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
             };
             
-            const uid = `elterngespraech-${termin.id}-${antwort.id}@elterngespraeche.app`;
+            const uid = `${variantenText('ics.uid_praefix', 'elterngespraech')}-${termin.id}-${antwort.id}@elterngespraeche.app`;
+            const elternTitel = `Elterngespräch - ${antwort.kindname}`;
+            const elternBeschreibung = `Elterngespräch mit den Eltern von ${antwort.kindname}`;
+            const leitungName = einstellungen.teacher_name || 'Schulleitung';
+            const titel = fuerLehrperson
+                ? variantenText('ics.titel_lehrperson', elternTitel, antwort.kindname)
+                : variantenText('ics.titel', elternTitel, leitungName);
+            const beschreibung = fuerLehrperson
+                ? variantenText('ics.beschreibung_lehrperson', elternBeschreibung, antwort.kindname)
+                : variantenText('ics.beschreibung', elternBeschreibung);
+            const ort = (einstellungen.gespraechsort || '').trim() || 'Schule';
             const dtstamp = formatICSDate(new Date());
             const dtstart = formatICSDate(datum);
             const dtend = formatICSDate(endDatum);
@@ -2153,9 +2199,9 @@ UID:${uid}
 DTSTAMP:${dtstamp}
 DTSTART:${dtstart}
 DTEND:${dtend}
-SUMMARY:Elterngespräch - ${antwort.kindname}
-DESCRIPTION:Elterngespräch mit den Eltern von ${antwort.kindname}
-LOCATION:Schule
+SUMMARY:${icsText(titel)}
+DESCRIPTION:${icsText(beschreibung)}
+LOCATION:${icsText(ort)}
 STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT
@@ -2163,7 +2209,7 @@ END:VEVENT
         }
         
         function downloadCSV() {
-            let csv = 'Kindname,Email,Datum,Uhrzeit,Dauer\n';
+            let csv = variantenText('csv.kopfzeile', 'Kindname,Email,Datum,Uhrzeit,Dauer') + '\n';
 
             // Iteriere über kinderGruppen statt assignments
             Object.keys(assignments).forEach(hash => {
@@ -2184,7 +2230,7 @@ END:VEVENT
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'Elterngespraeche_Export.csv';
+            link.download = variantenText('datei.csv', 'Elterngespraeche_Export.csv');
             link.click();
         }
         

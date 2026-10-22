@@ -94,6 +94,8 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
   auto_email_enabled: boolean,      // Auto-E-Mail aktiv?
   kontakt_email: string | null,     // Optional: Reply-To-Adresse für Eltern-Rückfragen
                                     // (NICHT als From verwenden - sonst SPF/DKIM-Fail!)
+  gespraechsort: string | null,     // Optional: Ort für Bestätigungsmail ("Ort:"-Zeile) und
+                                    // ICS-LOCATION. Leer = keine Ort-Zeile, LOCATION "Schule"
   updated_at: timestamp
 }
 ```
