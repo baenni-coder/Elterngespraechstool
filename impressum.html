@@ -433,7 +433,7 @@
 
             <!-- Eltern-Fassung (in der MAG-Variante ausgeblendet) -->
             <div data-mag-ausblenden>
-            <p class="subtitle">Letzte Aktualisierung: Juni 2026</p>
+            <p class="subtitle">Letzte Aktualisierung: Oktober 2026</p>
 
             <h2>1. Verantwortlicher</h2>
             <p>
@@ -471,9 +471,9 @@
 
             <h3>Lehrpersonen (mit Login)</h3>
             <ul>
-                <li><strong>Registrierung:</strong> E-Mail-Adresse, Passwort (gehasht, von Firebase verwaltet), optional Name</li>
+                <li><strong>Registrierung:</strong> E-Mail-Adresse, Passwort (gehasht, von Firebase verwaltet), optional Name, Status der E-Mail-Bestätigung</li>
                 <li><strong>Authentifizierung:</strong> Firebase Authentication Tokens, Session-Daten</li>
-                <li><strong>Nutzungsdaten:</strong> erstellte Termine (Datum, Uhrzeit, Dauer), Einstellungen wie Mindestanzahl Termine, optionale Kontakt-E-Mail für Eltern-Rückfragen</li>
+                <li><strong>Nutzungsdaten:</strong> erstellte Termine (Datum, Uhrzeit, Dauer), Einstellungen wie Mindestanzahl Termine, Gesprächsort und optionale Kontakt-E-Mail für Eltern-Rückfragen</li>
                 <li><strong>Zuteilungen:</strong> Verknüpfungen zwischen Terminen und Eltern-Antworten</li>
             </ul>
 
@@ -483,9 +483,14 @@
                 <li>
                     <strong>Verschlüsselung sensibler Daten:</strong> Kindname und E-Mail-Adresse werden
                     <strong>vor der Übermittlung an die Datenbank im Browser AES-256-verschlüsselt</strong>
-                    (client-seitige Verschlüsselung). Nur die zuständige Lehrperson, die den Verschlüsselungsschlüssel
-                    besitzt, kann diese Daten entschlüsseln. Selbst der Betreiber kann ohne den Lehrer-Account
-                    keine Klardaten einsehen.
+                    (client-seitige Verschlüsselung) und so in der Datenbank gespeichert. Einsehen kann sie nur die
+                    zuständige Lehrperson; andere Lehrpersonen haben keinen Zugriff. Der Betreiber hat für Betrieb
+                    und Wartung technischen Zugriff auf die Datenbank und nutzt diesen ausschliesslich für diese Zwecke.
+                </li>
+                <li>
+                    <strong>Termin-Bestätigungen:</strong> Die Bestätigungs-E-Mails (mit Kindname, Termin und
+                    Kalender-Datei) müssen für den Versand lesbar sein. Sie liegen deshalb unverschlüsselt in der
+                    Versand-Warteschlange und werden 30 Tage nach dem Einreihen automatisch gelöscht.
                 </li>
                 <li><strong>Eltern legen keinen Account an</strong> und müssen sich nicht authentifizieren - der Zugriff erfolgt über einen personalisierten Link der Lehrperson.</li>
             </ul>
@@ -502,7 +507,7 @@
             <h3>Technische Daten</h3>
             <ul>
                 <li><strong>Server-Logs:</strong> IP-Adresse, Browser-Typ, Geräteinformationen (durch Hosting-Anbieter, kurzfristige Speicherung zur Missbrauchsabwehr)</li>
-                <li><strong>Mail-Versand-Logs:</strong> Status der versendeten Termin-Bestätigungen (Erfolg / Fehler), automatische Löschung nach 90 Tagen</li>
+                <li><strong>Versandstatus:</strong> Erfolg oder Fehler beim Versand der Termin-Bestätigungen (im jeweiligen Mail-Dokument, automatische Löschung nach 30 Tagen)</li>
             </ul>
 
             <h2>4. Zweck der Datenbearbeitung</h2>
@@ -521,8 +526,8 @@
             </p>
             <ul>
                 <li><strong>Datenminimierung:</strong> Es werden ausschliesslich Name (zur Zuordnung) und keine weiteren personenbezogenen Daten des Kindes erfasst.</li>
-                <li><strong>Client-seitige Verschlüsselung:</strong> Der Kindname wird vor der Übermittlung an die Datenbank verschlüsselt.</li>
-                <li><strong>Zugriffsbeschränkung:</strong> Auf die entschlüsselten Daten hat ausschliesslich die zuständige Lehrperson Zugriff.</li>
+                <li><strong>Client-seitige Verschlüsselung:</strong> Der Kindname wird vor der Übermittlung an die Datenbank verschlüsselt (ausgenommen die Termin-Bestätigungen in der Versand-Warteschlange, siehe oben).</li>
+                <li><strong>Zugriffsbeschränkung:</strong> Die Daten sieht nur die zuständige Lehrperson; andere Lehrpersonen haben keinen Zugriff.</li>
                 <li><strong>Kein Profiling:</strong> Es findet keinerlei Bewertung, Analyse oder automatisierte Entscheidungsfindung statt.</li>
                 <li><strong>Einwilligung:</strong> Mit Übermittlung des Eltern-Formulars erteilen die Erziehungsberechtigten die Einwilligung zur Verarbeitung des Kindnamens für den genannten Zweck.</li>
             </ul>
@@ -564,15 +569,17 @@
                 serverseitig). Die USA verfügen gemäss der Staatenliste des Bundesrates über ein angemessenes
                 Datenschutzniveau, sofern die Empfänger dem Swiss-US Data Privacy Framework unterstehen.
                 Zusätzlich basiert die Übermittlung auf EU-Standardvertragsklauseln (SCCs) und den
-                Auftragsbearbeitungsverträgen (AVV/DPA) der jeweiligen Anbieter. Sensible Daten (Kindname,
-                Eltern-E-Mail-Adresse) werden vor der Übermittlung client-seitig verschlüsselt.
+                Auftragsbearbeitungsverträgen (AVV/DPA) der jeweiligen Anbieter. Kindname und Eltern-E-Mail-Adresse
+                werden in der Datenbank client-seitig verschlüsselt gespeichert; ausgenommen sind die
+                Termin-Bestätigungen in der Versand-Warteschlange, die bis zu ihrer Löschung nach 30 Tagen
+                unverschlüsselt vorliegen.
             </p>
 
             <h2>7. Speicherdauer</h2>
             <ul>
-                <li><strong>Termine, Antworten und Zuteilungen:</strong> Bleiben gespeichert, bis die Lehrperson sie aktiv löscht (Tab "Verwaltung" → "Für neue Elterngespräch-Runde vorbereiten" oder "Komplett neu starten").</li>
-                <li><strong>Versandte E-Mails (Mail-Dokumente):</strong> Werden 90 Tage nach Versand automatisch gelöscht (Firestore TTL).</li>
-                <li><strong>Lehrperson-Account:</strong> Bleibt bestehen, bis die Lehrperson die Löschung anfordert. Bei Löschung werden auch alle zugehörigen Termine und Zuteilungen entfernt.</li>
+                <li><strong>Termine, Antworten und Zuteilungen:</strong> Bleiben gespeichert, bis die Lehrperson sie aktiv löscht (Tab "Verwaltung" → "Antworten & Zuteilungen löschen" oder "Alles löschen").</li>
+                <li><strong>Termin-Bestätigungen (Mail-Dokumente):</strong> Werden 30 Tage nach dem Einreihen automatisch gelöscht.</li>
+                <li><strong>Lehrperson-Account:</strong> Bleibt bestehen, bis die Lehrperson die Löschung beim Betreiber verlangt. Dabei werden auch die zugehörigen Termine, Antworten und Zuteilungen gelöscht.</li>
             </ul>
 
             <h2>8. Ihre Rechte</h2>
@@ -609,10 +616,11 @@
             <ul>
                 <li><strong>TLS/SSL-Verschlüsselung</strong> für alle Datenübertragungen (HTTPS)</li>
                 <li><strong>Client-seitige AES-256-Verschlüsselung</strong> sensibler Daten (Kindname, Eltern-E-Mail-Adresse)</li>
-                <li><strong>Firebase Authentication</strong> mit Token-basierter Authentifizierung für Lehrpersonen</li>
-                <li><strong>Firestore Security Rules</strong> mit rollenbasierter Zugriffskontrolle</li>
+                <li><strong>Firebase Authentication</strong> für Lehrpersonen; Zugriff nur mit bestätigter Schul-E-Mail-Adresse</li>
+                <li><strong>Firestore Security Rules:</strong> Jede Lehrperson kann nur ihre eigenen Daten lesen und ändern</li>
                 <li><strong>SPF, DKIM und DMARC</strong> zur Sicherstellung der E-Mail-Authentizität gegenüber Empfängern</li>
                 <li><strong>Versandlimit-Überwachung</strong> zum Schutz vor missbräuchlichem Mail-Versand</li>
+                <li><strong>Automatische Löschung</strong> der Termin-Bestätigungen nach 30 Tagen</li>
             </ul>
 
             <h2>11. Beschwerderecht</h2>
