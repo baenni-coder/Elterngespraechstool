@@ -20,7 +20,7 @@ const MAG_TEXTE = {
     'formular.platzhalter_email': 'deine.email@beispiel.ch',
     'formular.label_termine': 'Welche Termine passen dir? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span>',
     'formular.label_termine_min': (anzahl, wort) => `Welche Termine passen dir? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${anzahl} ${wort} auswählen)</span>`,
-    'formular.erfolg': '<strong>Vielen Dank!</strong><br>Deine Verfügbarkeit wurde erfolgreich übermittelt.<br><br>Du erhältst eine Bestätigung per E-Mail, sobald die Schulleitung die Termine zugeteilt hat.',
+    'formular.erfolg': '<strong>Vielen Dank!</strong><br>Deine Verfügbarkeit wurde erfolgreich übermittelt.<br><br>Du erhältst eine Bestätigung per E-Mail, sobald die Schulleitung die Termine zugeteilt hat.<br><br>Möchtest du deine Angaben ändern, fülle das Formular einfach nochmals mit demselben Namen aus - es zählt deine neueste Antwort.',
     'formular.fehler_link': 'Ungültiger Link. Bitte verwende den Link, den du von der Schulleitung erhalten hast.',
     'formular.fehler_keine_termine': 'Aktuell sind keine Termine verfügbar. Bitte melde dich bei der Schulleitung.',
     'formular.fehler_alle_vergeben': 'Alle Termine sind bereits vergeben. Bitte melde dich bei der Schulleitung für weitere Möglichkeiten.',
@@ -155,6 +155,10 @@ Liebe Grüsse`,
     'datei.ics_alle': 'MAG_Alle.ics',
     'datei.csv': 'MAG_Export.csv',
     'csv.kopfzeile': 'Name,Email,Datum,Uhrzeit,Dauer',
+
+    // Erneute Antwort derselben Person: die neueste ersetzt die früheren (nur MAG)
+    'dashboard.antwort_ersetzt': (anzahl) => `Aktualisierte Antwort - ersetzt ${anzahl === 1 ? 'eine frühere Antwort' : anzahl + ' frühere Antworten'}`,
+    'dashboard.neu_zuteilen': (namen) => `<strong>🔄 Neu zuteilen:</strong> ${namen} ${namen.includes(',') ? 'haben' : 'hat'} nach der Zuteilung erneut geantwortet. Die frühere Zuteilung gilt nicht mehr - bitte neu zuteilen und speichern.`,
 
     // Tab "Hilfe" - die MAG-FAQ selbst steht als eigener Block in lehrer-dashboard.html (data-nur-mag)
     'hilfe.intro': 'Hier findest du Antworten auf häufig gestellte Fragen zur Nutzung des MAG-Planers.',

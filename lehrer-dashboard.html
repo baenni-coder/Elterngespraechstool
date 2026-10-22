@@ -1092,6 +1092,20 @@
 
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was passiert, wenn jemand das Formular zweimal ausfüllt?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Es zählt automatisch nur die <strong>neueste Antwort</strong>. So können Mitarbeitende ihre Verfügbarkeit ändern, indem sie das Formular einfach nochmals ausfüllen. Im Tab "Antworten" siehst du dann den Hinweis "🔄 Aktualisierte Antwort".</p>
+                                <p style="margin-top: 10px;">War die frühere Antwort bereits einem Termin zugeteilt, erscheint im Tab "Zuteilung" ein Hinweis "Neu zuteilen". Teile die Person dann neu zu und speichere - bei aktivem Auto-Versand erhält sie eine neue Bestätigung.</p>
+                                <p style="margin-top: 10px;">Voraussetzung ist, dass der Name gleich geschrieben ist (Gross-/Kleinschreibung spielt keine Rolle).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
                             <span>Jemand erscheint zweimal mit unterschiedlich geschriebenem Namen. Was tun?</span>
                             <span class="faq-arrow">▼</span>
                         </div>
@@ -1301,6 +1315,7 @@
         let allAntworten = [];
         let assignments = {}; // { antwortId: terminId }
         let einstellungen = {}; // zuletzt geladene/gespeicherte Settings (für Vorlagen und Kalenderdateien)
+        let ersetzteAntworten = {}; // nur MAG: { kindname_hash: [IDs älterer, ignorierter Antworten] }
         let mergeMode = false; // Merge-Modus aktiv?
         let selectedForMerge = []; // Array von ausgewählten Kindnamen für Merge
 
@@ -1630,8 +1645,26 @@
                     }
                 });
 
-                // Speichere für Zuteilung
-                allAntworten = filteredAntworten;
+                // Speichere für Zuteilung.
+                // MAG: Pro Person zählt nur die NEUESTE Antwort - eine erneute Antwort ersetzt die
+                // frühere (keine Schnittmenge wie bei getrennten Eltern). filteredAntworten ist nach
+                // created_at absteigend sortiert, die erste Antwort pro Name ist also die neueste.
+                // Die älteren Antworten bleiben gespeichert, werden aber ignoriert.
+                ersetzteAntworten = {};
+                if (istMagVariante()) {
+                    const neueste = {};
+                    filteredAntworten.forEach(antwort => {
+                        const hash = antwort.kindname_hash;
+                        if (!neueste[hash]) {
+                            neueste[hash] = antwort;
+                        } else {
+                            (ersetzteAntworten[hash] = ersetzteAntworten[hash] || []).push(antwort.id);
+                        }
+                    });
+                    allAntworten = filteredAntworten.filter(antwort => neueste[antwort.kindname_hash] === antwort);
+                } else {
+                    allAntworten = filteredAntworten;
+                }
 
                 document.getElementById('antworten-count').textContent = allAntworten.length;
 
@@ -1720,6 +1753,7 @@
                                 <h4>${kindname}</h4>
                                 ${splitButtonHtml}
                             </div>
+                            ${ersetzteAntworten[hash] ? `<p style="color: #ff9800; font-weight: 600;">🔄 ${variantenText('dashboard.antwort_ersetzt', '', ersetzteAntworten[hash].length)}</p>` : ''}
                             ${antworten.length > 1 ? `<p style="color: #2ecc71; font-weight: 600;">✓ ${antworten.length} Elternteile haben geantwortet</p>` : ''}
                             <p><strong>E-Mail${antworten.length > 1 ? 's' : ''}:</strong> ${emails}</p>
                             <p><strong>${antworten.length > 1 ? 'Gemeinsame verfügbare Termine:' : 'Verfügbare Termine:'}</strong></p>
@@ -1807,6 +1841,17 @@
                 });
             }
 
+            // MAG: Personen, deren frühere (inzwischen ersetzte) Antwort schon zugeteilt war.
+            // Die Zuteilung wird nicht stillschweigend übernommen - die neue Antwort kann andere
+            // Termine enthalten. Stattdessen Hinweis in renderZuteilungsArea().
+            window.neuZuzuteilen = [];
+            Object.keys(ersetzteAntworten).forEach(hash => {
+                const warZugeteilt = zuteilungen.some(z => ersetzteAntworten[hash].includes(z.antwort_id));
+                if (warZugeteilt && kinderGruppen[hash] && !assignments[hash]) {
+                    window.neuZuzuteilen.push(kinderGruppen[hash].kindname);
+                }
+            });
+
             renderZuteilungsArea();
         }
         
@@ -1815,6 +1860,13 @@
             area.innerHTML = '';
 
             if (!window.kinderGruppen) return;
+
+            if (window.neuZuzuteilen && window.neuZuzuteilen.length > 0) {
+                const hinweis = document.createElement('div');
+                hinweis.className = 'alert alert-warning';
+                hinweis.innerHTML = variantenText('dashboard.neu_zuteilen', '', window.neuZuzuteilen.sort().join(', '));
+                area.appendChild(hinweis);
+            }
 
             allTermine.forEach(termin => {
                 const datum = new Date(termin.datum);

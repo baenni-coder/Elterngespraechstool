@@ -270,6 +270,24 @@ elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
 
 **Hinweis**: Nur der letzte Link wird gespeichert, NICHT mehrere Kinder-Links.
 
+### 8. Varianten: Elterngespräch / Mitarbeitendengespräch (MAG)
+
+Derselbe Code läuft als zwei getrennte Instanzen mit **eigenem Firebase-Projekt**:
+
+- **Weiche** (`firebase-config.js`): `VARIANTE` wird über den Hostname bestimmt
+  (`VARIANTEN.mag.hostnames`). Jeder unbekannte Hostname = Eltern-Variante. Die MAG-Variante
+  startet nicht, solange `VARIANTEN.mag.firebaseConfig` null ist. Lokal testen: `?variante=mag`
+  (wirkt nur auf localhost).
+- **Texte** (`texte.js`): Die Eltern-Texte stehen weiterhin direkt im HTML/Code und werden nur
+  in der MAG-Variante ersetzt:
+  - im Code: `variantenText('key', 'Eltern-Text', ...params)`
+  - im HTML: `data-mag-text`, `data-mag-html`, `data-mag-placeholder`, `data-mag-ausblenden`,
+    `data-nur-mag` (Element ist per `display: none` versteckt und wird nur im MAG eingeblendet)
+- **Logik-Unterschied**: Im MAG zählt pro Name (`kindname_hash`) nur die **neueste** Antwort
+  (`loadAntworten()`, `ersetzteAntworten`) - keine Schnittmenge wie bei getrennten Eltern.
+  War eine ersetzte Antwort schon zugeteilt, zeigt die Zuteilung den Hinweis "Neu zuteilen".
+- Neue Texte immer für **beide** Varianten prüfen; MAG ist in Du-Form.
+
 ## Wichtige Funktionen
 
 ### lehrer-dashboard.html
