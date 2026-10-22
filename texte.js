@@ -6,7 +6,7 @@
 // Nur in der MAG-Variante werden sie durch die Texte hier ersetzt.
 // Fehlt ein Schlüssel, bleibt der Eltern-Text stehen.
 //
-// Muss NACH firebase-config.js geladen werden (braucht VARIANTE).
+// Muss NACH variante.js geladen werden (braucht VARIANTE).
 
 const MAG_TEXTE = {
     // ---------- eltern-formular.html ----------
@@ -159,6 +159,12 @@ Liebe Grüsse`,
     // Erneute Antwort derselben Person: die neueste ersetzt die früheren (nur MAG)
     'dashboard.antwort_ersetzt': (anzahl) => `Aktualisierte Antwort - ersetzt ${anzahl === 1 ? 'eine frühere Antwort' : anzahl + ' frühere Antworten'}`,
     'dashboard.neu_zuteilen': (namen) => `<strong>🔄 Neu zuteilen:</strong> ${namen} ${namen.includes(',') ? 'haben' : 'hat'} nach der Zuteilung erneut geantwortet. Die frühere Zuteilung gilt nicht mehr - bitte neu zuteilen und speichern.`,
+
+    // ---------- impressum.html ----------
+    // Die MAG-Datenschutzerklärung steht als eigener Block in impressum.html (data-nur-mag)
+    'impressum.seitentitel': 'Impressum & Datenschutz - MAG-Planer',
+    'impressum.verfuegbarkeit': 'Der Betreiber ist bemüht, den MAG-Planer möglichst unterbrechungsfrei anzubieten. Es kann jedoch keine Garantie für eine jederzeitige Verfügbarkeit übernommen werden. Wartungsarbeiten, technische Störungen oder andere Umstände können zu temporären Einschränkungen führen.',
+    'impressum.zweck': 'Der MAG-Planer ist eine Webanwendung zur Koordination der Termine für Mitarbeitendengespräche (MAG). Die Schulleitungen erstellen Termine und teilen sie zu, die Mitarbeitenden geben ohne Login ihre verfügbaren Zeiten an. Gesprächsinhalte werden im Tool nicht erfasst.',
 
     // Tab "Hilfe" - die MAG-FAQ selbst steht als eigener Block in lehrer-dashboard.html (data-nur-mag)
     'hilfe.intro': 'Hier findest du Antworten auf häufig gestellte Fragen zur Nutzung des MAG-Planers.',

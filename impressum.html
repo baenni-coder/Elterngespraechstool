@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impressum & Datenschutz - Elterngespräch-Planer</title>
+    <title data-mag-text="impressum.seitentitel">Impressum & Datenschutz - Elterngespräch-Planer</title>
+    <!-- Ohne Firebase: Variante nur über den Hostnamen bestimmen -->
+    <script src="variante.js"></script>
+    <script src="texte.js"></script>
     <style>
         * {
             margin: 0;
@@ -179,7 +182,7 @@
             <p>Andreas Bänninger<br>PICTS-Verantwortlicher Schulkreis BeLoSe</p>
 
             <h2>Zweck der Website</h2>
-            <p>
+            <p data-mag-html="impressum.zweck">
                 Das Elterngesprächstool ist eine Webanwendung zur Koordination von Elterngesprächen
                 an Schulen. Lehrpersonen können Termine erstellen und verwalten, Eltern geben ohne Login
                 ihre verfügbaren Zeiten an, und das Tool unterstützt bei der Zuteilung passender Termine.
@@ -196,7 +199,7 @@
             </p>
 
             <h3>Verfügbarkeit</h3>
-            <p>
+            <p data-mag-text="impressum.verfuegbarkeit">
                 Der Betreiber ist bemüht, das Elterngesprächstool möglichst unterbrechungsfrei anzubieten.
                 Es kann jedoch keine Garantie für eine jederzeitige Verfügbarkeit übernommen werden.
                 Wartungsarbeiten, technische Störungen oder andere Umstände können zu temporären
@@ -226,7 +229,12 @@
             <h2>Technische Umsetzung</h2>
 
             <h3>Hosting der Web-Anwendung</h3>
-            <div class="address-block">
+            <div class="address-block" data-nur-mag style="display: none;">
+                <strong>Firebase Hosting / Google Cloud</strong>
+                Google Ireland Limited<br>
+                Gordon House, Dublin 4, Ireland
+            </div>
+            <div class="address-block" data-mag-ausblenden>
                 <strong>GitHub, Inc. (über GitHub Pages)</strong>
                 88 Colin P Kelly Jr Street<br>
                 San Francisco, CA 94107, USA
@@ -261,6 +269,170 @@
 
         <section id="datenschutz">
             <h1 style="margin-top: 48px;">Datenschutzerklärung</h1>
+
+            <!-- MAG-Fassung (nur in der MAG-Variante sichtbar, siehe texte.js) -->
+            <div data-nur-mag style="display: none;">
+                <p class="subtitle">MAG-Planer · Letzte Aktualisierung: Oktober 2026</p>
+
+                <h2>1. Verantwortlicher</h2>
+                <p>Verantwortlich für die Datenbearbeitung im Sinne des Schweizer Datenschutzgesetzes (DSG) ist:</p>
+                <div class="address-block">
+                    <strong>PICTS BeLoSe</strong>
+                    Schulhausstrasse 14<br>
+                    2545 Selzach<br>
+                    Schweiz<br><br>
+                    E-Mail: <a href="mailto:admin@schueu.ch">admin@schueu.ch</a>
+                </div>
+
+                <h2>2. Geltungsbereich und Rechtsgrundlage</h2>
+                <p>
+                    Diese Datenschutzerklärung gilt für den MAG-Planer, mit dem die Schulleitungen die Termine
+                    für Mitarbeitendengespräche (MAG) koordinieren. Sie richtet sich an die Schulleitungen, die
+                    das Tool mit einem Konto nutzen, und an die Mitarbeitenden, die ihre Verfügbarkeit über das
+                    Formular angeben.
+                </p>
+                <p>Die Datenbearbeitung erfolgt auf Grundlage des Schweizer Datenschutzgesetzes (DSG) und der Verordnung zum Datenschutzgesetz (DSV). Sie stützt sich auf:</p>
+                <ul>
+                    <li><strong>Art. 328b OR</strong>: Bearbeitung von Daten der Mitarbeitenden, soweit sie zur Durchführung des Arbeitsverhältnisses erforderlich ist - hier die Organisation der Mitarbeitendengespräche</li>
+                    <li><strong>Art. 31 Abs. 1 DSG</strong>: Überwiegendes Interesse (technische Administration, Sicherheit, Fehlerbehebung)</li>
+                </ul>
+
+                <h2>3. Welche Daten bearbeiten wir?</h2>
+
+                <h3>Mitarbeitende (ohne Login)</h3>
+                <ul>
+                    <li><strong>Formular:</strong> Name, E-Mail-Adresse und die gewählten Termine sowie der Zeitpunkt der Antwort</li>
+                    <li><strong>Erneute Antwort:</strong> Füllst du das Formular nochmals aus, zählt nur deine neueste Antwort. Frühere Antworten bleiben gespeichert, bis die Schulleitung die Antworten der Runde löscht.</li>
+                    <li>Mitarbeitende legen <strong>kein Konto</strong> an. Der Zugang erfolgt über den Link der Schulleitung.</li>
+                </ul>
+
+                <h3>Schulleitungen (mit Login)</h3>
+                <ul>
+                    <li><strong>Konto:</strong> E-Mail-Adresse (Schul-Adresse), Passwort (von Firebase verschlüsselt gespeichert, für niemanden einsehbar), optional Name, Status der E-Mail-Bestätigung</li>
+                    <li><strong>Nutzungsdaten:</strong> erstellte Termine (Datum, Uhrzeit, Dauer), Einstellungen (z.B. Mindestanzahl Termine, Gesprächsort, Kontakt-E-Mail für Rückfragen)</li>
+                    <li><strong>Zuteilungen:</strong> welche Antwort welchem Termin zugeteilt ist</li>
+                </ul>
+
+                <h3>Was wir nicht bearbeiten</h3>
+                <p>
+                    Der MAG-Planer dient <strong>ausschliesslich der Terminkoordination</strong>. Gesprächsinhalte,
+                    Notizen, Beurteilungen oder Zielvereinbarungen werden im Tool weder erfasst noch gespeichert.
+                    Es findet keine Bewertung, kein Profiling und keine automatisierte Entscheidungsfindung statt.
+                </p>
+
+                <h3>Technische Daten</h3>
+                <ul>
+                    <li><strong>Server-Logs:</strong> IP-Adresse, Browser-Typ, Zeitpunkt des Aufrufs (durch den Hosting-Anbieter, kurzfristige Speicherung zur Missbrauchsabwehr)</li>
+                    <li><strong>Versandstatus:</strong> Erfolg oder Fehler beim Versand der Termin-Bestätigungen (im jeweiligen Mail-Dokument, siehe Speicherdauer)</li>
+                </ul>
+
+                <h2>4. Zweck der Datenbearbeitung</h2>
+                <ul>
+                    <li>Erfassung der Verfügbarkeiten der Mitarbeitenden für das Mitarbeitendengespräch</li>
+                    <li>Zuteilung der Termine durch die zuständige Schulleitung</li>
+                    <li>Termin-Bestätigung per E-Mail (inkl. Kalender-Datei als Anhang)</li>
+                    <li>Technische Administration, Sicherheit und Fehlerbehebung</li>
+                </ul>
+
+                <h2>5. Wer hat Zugriff?</h2>
+                <ul>
+                    <li><strong>Die zuständige Schulleitung:</strong> Jede Schulleitung sieht ausschliesslich die Antworten zu ihren eigenen Terminen. Das wird serverseitig durch die Sicherheitsregeln der Datenbank durchgesetzt.</li>
+                    <li><strong>Andere Mitarbeitende und andere Schulleitungen</strong> sehen deine Antwort nicht. Wer den Link hat, sieht nur, welche Termine noch frei sind - nicht, wer welchen Termin gewählt hat oder erhalten hat.</li>
+                    <li><strong>Der Betreiber</strong> hat für Betrieb und Wartung technischen Zugriff auf die Datenbank und nutzt diesen ausschliesslich für diese Zwecke.</li>
+                </ul>
+                <p>
+                    Name und E-Mail-Adresse werden im Browser verschlüsselt (AES-256), bevor sie in der Datenbank
+                    gespeichert werden. Die Termin-Bestätigungen müssen für den Versand lesbar sein und liegen deshalb
+                    bis zu ihrer automatischen Löschung unverschlüsselt in der Versand-Warteschlange.
+                </p>
+
+                <h2>6. Weitergabe an Drittanbieter und Datenübermittlung ins Ausland</h2>
+                <p>Wir nutzen folgende Dienstleister zur Bereitstellung des Tools. Die Daten werden nicht zu anderen Zwecken weitergegeben.</p>
+
+                <h3>Firebase / Google Cloud (Hosting, Datenbank, Authentifizierung, Mail-Versand-Extension)</h3>
+                <p>
+                    <strong>Anbieter:</strong> Google Ireland Limited, Gordon House, Dublin 4, Ireland<br>
+                    <strong>Zweck:</strong> Auslieferung der Web-Anwendung; Speicherung von Terminen, Antworten und Zuteilungen;
+                    Anmeldung der Schulleitungen; Übergabe der Termin-Bestätigungen an den Mailserver<br>
+                    <strong>Datenschutz:</strong> <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Privacy Policy</a><br>
+                    <strong>AVV:</strong> <a href="https://cloud.google.com/terms/data-processing-addendum" target="_blank" rel="noopener">Google Cloud DPA</a>
+                </p>
+
+                <h3>Hoststar (SMTP-Server für den Mail-Versand)</h3>
+                <p>
+                    <strong>Anbieter:</strong> Hoststar Webhosting, Schweiz<br>
+                    <strong>Zweck:</strong> Versand der Termin-Bestätigungen<br>
+                    <strong>Daten:</strong> Empfänger-E-Mail-Adresse, Mail-Inhalt, Kalender-Anhang<br>
+                    <strong>Datenschutz:</strong> <a href="https://www.hoststar.ch/de/datenschutz" target="_blank" rel="noopener">Hoststar Datenschutzerklärung</a><br>
+                    <strong>Standort:</strong> Schweiz
+                </p>
+
+                <h3>Datenübermittlung ins Ausland (Art. 16 DSG)</h3>
+                <p>
+                    Google kann Daten ausserhalb der Schweiz bearbeiten, auch in den USA. Für Empfänger, die dem
+                    Swiss-US Data Privacy Framework unterstehen, anerkennt der Bundesrat ein angemessenes
+                    Datenschutzniveau. Zusätzlich stützt sich die Übermittlung auf die Standardvertragsklauseln und
+                    den Auftragsbearbeitungsvertrag (DPA) von Google.
+                </p>
+
+                <h2>7. Speicherdauer</h2>
+                <ul>
+                    <li><strong>Antworten und Zuteilungen:</strong> bis die Schulleitung sie löscht (Tab "Verwaltung" → "Antworten & Zuteilungen löschen"), in der Regel nach Abschluss der MAG-Runde.</li>
+                    <li><strong>Termine:</strong> bis die Schulleitung sie löscht.</li>
+                    <li><strong>Termin-Bestätigungen (Versand-Warteschlange):</strong> werden 30 Tage nach dem Einreihen automatisch gelöscht.</li>
+                    <li><strong>Konten der Schulleitungen:</strong> bis sie nicht mehr benötigt werden, z.B. beim Austritt aus der Schulleitung.</li>
+                </ul>
+
+                <h2>8. Deine Rechte</h2>
+                <p>Du hast gemäss DSG insbesondere folgende Rechte:</p>
+                <ul>
+                    <li><strong>Auskunft (Art. 25 DSG):</strong> Du kannst kostenlos Auskunft über deine gespeicherten Daten verlangen. Wir antworten innert 30 Tagen.</li>
+                    <li><strong>Berichtigung (Art. 32 DSG):</strong> Du kannst unrichtige Daten korrigieren lassen - oder das Formular einfach nochmals ausfüllen.</li>
+                    <li><strong>Löschung (Art. 32 DSG):</strong> Du kannst die Löschung deiner Daten verlangen, soweit keine Pflicht zur Aufbewahrung besteht.</li>
+                    <li><strong>Datenherausgabe (Art. 28 DSG):</strong> Du kannst deine Daten in einem gängigen elektronischen Format verlangen.</li>
+                </ul>
+                <p>
+                    Wende dich dafür an deine Schulleitung oder an
+                    <a href="mailto:admin@schueu.ch">admin@schueu.ch</a>.
+                </p>
+
+                <h2>9. Cookies und lokale Speicherung</h2>
+                <p>Der MAG-Planer verwendet ausschliesslich technisch notwendige lokale Speicherung:</p>
+                <ul>
+                    <li><strong>Firebase Authentication:</strong> Anmeldestatus der Schulleitungen</li>
+                    <li><strong>localStorage:</strong> der zuletzt verwendete Formular-Link (Komfortfunktion auf der Startseite)</li>
+                </ul>
+                <p>Werbe-Cookies, Tracking oder Analyse-Dienste werden <strong>nicht</strong> verwendet.</p>
+
+                <h2>10. Datensicherheit</h2>
+                <p>Wir setzen angemessene technische und organisatorische Massnahmen ein (Art. 8 DSG):</p>
+                <ul>
+                    <li><strong>HTTPS</strong> für alle Datenübertragungen</li>
+                    <li><strong>Verschlüsselung von Name und E-Mail-Adresse</strong> im Browser (AES-256), bevor sie gespeichert werden</li>
+                    <li><strong>Zugang nur für Schulleitungen</strong> mit bestätigter Schul-E-Mail-Adresse; keine Selbstregistrierung</li>
+                    <li><strong>Sicherheitsregeln der Datenbank:</strong> Jede Schulleitung kann nur ihre eigenen Daten lesen und ändern</li>
+                    <li><strong>SPF, DKIM und DMARC</strong> für die Echtheit der versendeten E-Mails</li>
+                    <li><strong>Automatische Löschung</strong> der Termin-Bestätigungen nach 30 Tagen</li>
+                </ul>
+
+                <h2>11. Beschwerderecht</h2>
+                <p>Du kannst dich bei der zuständigen Aufsichtsbehörde beschweren:</p>
+                <div class="address-block">
+                    <strong>Eidgenössischer Datenschutz- und Öffentlichkeitsbeauftragter (EDÖB)</strong>
+                    Feldeggweg 1<br>
+                    3003 Bern<br>
+                    Website: <a href="https://www.edoeb.admin.ch" target="_blank" rel="noopener">www.edoeb.admin.ch</a>
+                </div>
+
+                <h2>12. Änderungen</h2>
+                <p>
+                    Wir passen diese Datenschutzerklärung an, wenn sich die Rechtslage oder die Funktionen des Tools
+                    ändern. Die aktuelle Version ist stets auf dieser Seite verfügbar.
+                </p>
+            </div>
+
+            <!-- Eltern-Fassung (in der MAG-Variante ausgeblendet) -->
+            <div data-mag-ausblenden>
             <p class="subtitle">Letzte Aktualisierung: Juni 2026</p>
 
             <h2>1. Verantwortlicher</h2>
@@ -457,6 +629,7 @@
                 Wir behalten uns vor, diese Datenschutzerklärung anzupassen, um sie an geänderte Rechtslagen
                 oder Funktionen der App anzupassen. Die aktuelle Version ist stets auf dieser Seite verfügbar.
             </p>
+            </div>
         </section>
 
         <div class="footer">

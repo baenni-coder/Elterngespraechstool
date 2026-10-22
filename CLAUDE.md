@@ -274,10 +274,14 @@ elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
 
 Derselbe Code läuft als zwei getrennte Instanzen mit **eigenem Firebase-Projekt**:
 
-- **Weiche** (`firebase-config.js`): `VARIANTE` wird über den Hostname bestimmt
-  (`VARIANTEN.mag.hostnames`). Jeder unbekannte Hostname = Eltern-Variante. Die MAG-Variante
-  startet nicht, solange `VARIANTEN.mag.firebaseConfig` null ist. Lokal testen: `?variante=mag`
-  (wirkt nur auf localhost).
+- **Weiche** (`variante.js`, ohne Firebase): `VARIANTE` wird über den Hostname bestimmt
+  (`MAG_HOSTNAMES`). Jeder unbekannte Hostname = Eltern-Variante. Lokal testen: `?variante=mag`
+  (wirkt nur auf localhost). Ladereihenfolge: `variante.js` → `firebase-config.js` → `texte.js`.
+- **Firebase-Projekt** (`firebase-config.js`): `VARIANTEN[...].firebaseConfig`. Die MAG-Variante
+  startet nicht, solange `VARIANTEN.mag.firebaseConfig` null ist. Fehlt `variante.js` (alte
+  HTML-Datei im Cache), gilt die Eltern-Variante.
+- **Impressum/Datenschutz** (`impressum.html`): eigene MAG-Fassung als `data-nur-mag`-Block;
+  die Seite lädt bewusst kein Firebase (nur `variante.js` + `texte.js`).
 - **Texte** (`texte.js`): Die Eltern-Texte stehen weiterhin direkt im HTML/Code und werden nur
   in der MAG-Variante ersetzt:
   - im Code: `variantenText('key', 'Eltern-Text', ...params)`

@@ -1,10 +1,11 @@
 // ============================================
-// VARIANTEN: Elterngespräch / Mitarbeitendengespräch (MAG)
+// FIREBASE-KONFIGURATION PRO VARIANTE
 // ============================================
 
-// Derselbe Code läuft als zwei getrennte Instanzen mit je eigener Datenbank.
-// Welche Variante aktiv ist, entscheidet der Hostname. Jeder unbekannte Hostname
-// ergibt die Eltern-Variante - so bleibt die bestehende Installation unverändert.
+// Die aktive Variante bestimmt variante.js (Hostname). Fehlt variante.js (z.B. alte,
+// noch im Browser-Cache liegende HTML-Datei), gilt sicherheitshalber die Eltern-Variante.
+const AKTIVE_VARIANTE = typeof VARIANTE !== 'undefined' ? VARIANTE : 'eltern';
+
 const VARIANTEN = {
     eltern: {
         // WICHTIG: Werte aus Firebase Console > Projekteinstellungen > Deine Apps > SDK-Setup und -Konfiguration
@@ -19,35 +20,19 @@ const VARIANTEN = {
         }
     },
     mag: {
-        // Hostnamen der MAG-Instanz (noch festzulegen)
-        hostnames: [],
         // Eigenes Firebase-Projekt - wird eingetragen, sobald es existiert.
         // Solange null, startet die MAG-Variante bewusst NICHT (nie in die Eltern-Datenbank schreiben!)
         firebaseConfig: null
     }
 };
 
-function ermittleVariante() {
-    const host = window.location.hostname;
-    if (VARIANTEN.mag.hostnames.includes(host)) {
-        return 'mag';
-    }
-    // Lokales Testen: ?variante=mag (nur auf localhost, nie auf der Live-Domain)
-    const istLokal = host === 'localhost' || host === '127.0.0.1' || host === '';
-    if (istLokal && new URLSearchParams(window.location.search).get('variante') === 'mag') {
-        return 'mag';
-    }
-    return 'eltern';
-}
-
-const VARIANTE = ermittleVariante();
-const firebaseConfig = VARIANTEN[VARIANTE].firebaseConfig;
+const firebaseConfig = VARIANTEN[AKTIVE_VARIANTE].firebaseConfig;
 
 if (!firebaseConfig) {
     document.addEventListener('DOMContentLoaded', () => {
         document.body.innerHTML = '<p style="padding: 40px; font-family: sans-serif; text-align: center;">Diese Instanz ist noch nicht eingerichtet.</p>';
     });
-    throw new Error(`Keine Firebase-Konfiguration für Variante "${VARIANTE}" hinterlegt.`);
+    throw new Error(`Keine Firebase-Konfiguration für Variante "${AKTIVE_VARIANTE}" hinterlegt.`);
 }
 
 // Firebase initialisieren
