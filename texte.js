@@ -154,7 +154,11 @@ Liebe Grüsse`,
     'datei.ics_einzel': (safeName) => `MAG_${safeName}.ics`,
     'datei.ics_alle': 'MAG_Alle.ics',
     'datei.csv': 'MAG_Export.csv',
-    'csv.kopfzeile': 'Name,Email,Datum,Uhrzeit,Dauer'
+    'csv.kopfzeile': 'Name,Email,Datum,Uhrzeit,Dauer',
+
+    // Tab "Hilfe" - die MAG-FAQ selbst steht als eigener Block in lehrer-dashboard.html (data-nur-mag)
+    'hilfe.intro': 'Hier findest du Antworten auf häufig gestellte Fragen zur Nutzung des MAG-Planers.',
+    'hilfe.kontakt': 'Falls du weitere Fragen hast oder technische Probleme auftreten, melde dich beim Betreiber (siehe Impressum).'
 };
 
 function istMagVariante() {
@@ -176,6 +180,7 @@ function variantenText(key, elternText, ...params) {
 //   data-mag-html="key"        -> innerHTML
 //   data-mag-placeholder="key" -> placeholder
 //   data-mag-ausblenden        -> Element ausblenden
+//   data-nur-mag               -> Element einblenden (ist im HTML mit display: none versteckt)
 document.addEventListener('DOMContentLoaded', () => {
     if (!istMagVariante()) return;
 
@@ -190,5 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('[data-mag-ausblenden]').forEach(el => {
         el.style.display = 'none';
+    });
+    document.querySelectorAll('[data-nur-mag]').forEach(el => {
+        el.style.display = '';
     });
 });

@@ -759,8 +759,10 @@
             <!-- Tab: Hilfe -->
             <div id="tab-hilfe" class="tab-content">
                 <h2>Hilfe & FAQ</h2>
-                <p style="color: #666; margin-bottom: 30px;">Hier finden Sie Antworten auf häufig gestellte Fragen zur Nutzung des Elterngesprächstools.</p>
+                <p style="color: #666; margin-bottom: 30px;" data-mag-text="hilfe.intro">Hier finden Sie Antworten auf häufig gestellte Fragen zur Nutzung des Elterngesprächstools.</p>
 
+                <!-- Eltern-Fassung der FAQ (in der MAG-Variante ausgeblendet) -->
+                <div data-mag-ausblenden>
                 <!-- Erste Schritte -->
                 <div class="faq-category">
                     <h3>Erste Schritte</h3>
@@ -894,7 +896,7 @@
                                 <p>Der automatische E-Mail-Versand ist <strong>zentral eingerichtet</strong> - Sie müssen als Lehrperson nichts konfigurieren:</p>
                                 <ol>
                                     <li>Setzen Sie das Häkchen bei "Automatischer E-Mail-Versand aktivieren" in den Einstellungen.</li>
-                                    <li>Geben Sie optional eine eigene Absender-Adresse an, sonst wird die zentrale Standard-Adresse verwendet.</li>
+                                    <li>Geben Sie optional eine Kontakt-E-Mail für Rückfragen an. Antworten der Eltern auf die Bestätigung landen dann dort, sonst bei Ihrer Login-Adresse.</li>
                                     <li>Nach dem Speichern der Zuteilungen werden die E-Mails inkl. Kalender-Datei (.ics) im Hintergrund automatisch versendet.</li>
                                 </ol>
                                 <p style="margin-top: 10px;">Falls Sie keine automatischen E-Mails wünschen, lassen Sie die Option deaktiviert - die E-Mail-Vorlagen zum manuellen Kopieren werden weiterhin angezeigt.</p>
@@ -991,10 +993,250 @@
                     </div>
                 </div>
 
+                </div>
+
+                <!-- MAG-Fassung der FAQ (nur in der MAG-Variante sichtbar, siehe texte.js) -->
+                <div data-nur-mag style="display: none;">
+                <div class="faq-category">
+                    <h3>Erste Schritte</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie starte ich mit dem Tool?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <ol>
+                                    <li><strong>Termine erstellen:</strong> Erstelle im Tab "Meine Termine" deine verfügbaren Zeitfenster.</li>
+                                    <li><strong>Link teilen:</strong> Kopiere den Link im Tab "Link teilen" und sende ihn per E-Mail an die Mitarbeitenden.</li>
+                                    <li><strong>Antworten abwarten:</strong> Die Mitarbeitenden wählen ihre verfügbaren Termine aus.</li>
+                                    <li><strong>Zuteilen:</strong> Im Tab "Zuteilung" weist du jeder Person einen Termin zu.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie teile ich den Link mit den Mitarbeitenden?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Im Tab <strong>"Link teilen"</strong> findest du deinen persönlichen Link. Kopiere ihn und sende ihn per E-Mail an die Mitarbeitenden.</p>
+                                <p style="margin-top: 10px;"><strong>Tipp:</strong> Die Mitarbeitenden brauchen kein Konto - sie geben ihre Verfügbarkeit direkt über den Link an.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-category">
+                    <h3>Termine & Zuteilung</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was bedeutet die Mindestanzahl Termine?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Die Mindestanzahl (Standard: 3) legt fest, wie viele Termine die Mitarbeitenden mindestens auswählen müssen. Das erhöht die Chance, dass du für alle einen passenden Termin findest.</p>
+                                <p style="margin-top: 10px;">Du kannst die Einstellung im Tab "Meine Termine" unter "Einstellungen" anpassen.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wofür ist der Gesprächsort?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Der Gesprächsort (z.B. "Büro Schulleitung") erscheint in der Bestätigungsmail als Zeile "Ort:" und im Kalendereintrag. Lässt du das Feld leer, steht im Kalendereintrag "Schule".</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie funktioniert die Zuteilung?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <ol>
+                                    <li>Öffne den Tab <strong>"Zuteilung"</strong>.</li>
+                                    <li>Bei jedem Termin siehst du, wer diesen Termin gewählt hat.</li>
+                                    <li>Klicke auf eine Person, um sie diesem Termin zuzuteilen.</li>
+                                    <li>Bereits zugeteilte Personen werden bei anderen Terminen automatisch ausgegraut.</li>
+                                    <li>Klicke auf <strong>"Zuteilungen speichern"</strong>, um die Zuteilungen zu bestätigen.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Kann ich eine Zuteilung rückgängig machen?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Ja. Klicke im Tab "Zuteilung" erneut auf die bereits zugeteilte Person - die Zuteilung wird aufgehoben. Speichere danach die Änderungen.</p>
+                                <p style="margin-top: 10px;">Hast du den automatischen E-Mail-Versand aktiviert, ist die erste Bestätigung bereits verschickt. Informiere die Person in diesem Fall kurz persönlich über die Änderung.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Jemand erscheint zweimal mit unterschiedlich geschriebenem Namen. Was tun?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Das passiert, wenn jemand das Formular zweimal ausfüllt und den Namen anders schreibt (z.B. "Anna Muster" und "Muster Anna"). Gross-/Kleinschreibung und Leerzeichen am Anfang oder Ende spielen dagegen keine Rolle.</p>
+                                <p style="margin-top: 10px;">Teile einfach <strong>einen</strong> der beiden Einträge zu - am besten den mit den passenderen Terminen. Den anderen lässt du ohne Zuteilung.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-category">
+                    <h3>E-Mail & Export</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie funktioniert der automatische E-Mail-Versand?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Der automatische E-Mail-Versand ist <strong>zentral eingerichtet</strong> - du musst nichts konfigurieren:</p>
+                                <ol>
+                                    <li>Setze in den Einstellungen das Häkchen bei "Automatischer E-Mail-Versand aktivieren".</li>
+                                    <li>Gib optional eine Kontakt-E-Mail für Rückfragen an. Antworten auf die Bestätigung landen dann dort, sonst bei deiner Login-Adresse.</li>
+                                    <li>Nach dem Speichern der Zuteilungen werden die Bestätigungen inkl. Kalender-Datei (.ics) im Hintergrund verschickt.</li>
+                                </ol>
+                                <p style="margin-top: 10px;">Ohne automatischen Versand werden dir nach dem Speichern E-Mail-Vorlagen zum Kopieren angezeigt.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was bedeutet die Anzeige "📧 Mail-Versand: X/100 eigene Mails in letzter Stunde"?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Der Mailserver erlaubt maximal <strong>100 ausgehende Mails pro Stunde</strong> pro Postfach. Die Anzeige im Tab "Zuteilung" zeigt, wie viele Mails du in der letzten Stunde schon verschickt hast und wie viele dazukämen.</p>
+                                <p style="margin-top: 10px;"><strong>Wichtig:</strong> Du siehst nur deine eigenen Mails. Mails anderer Schulleitungen zählen ebenfalls zum Limit, sind in der Anzeige aber nicht enthalten.</p>
+                                <p style="margin-top: 10px;">Wird das Limit überschritten, gehen die Mails trotzdem raus - die Zustellung kann sich aber um 1-2 Stunden verzögern.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was sind ICS-Dateien?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p><strong>ICS-Dateien</strong> sind Kalender-Dateien, die fast alle Kalender-Apps importieren können (Outlook, Google Kalender, Apple Kalender usw.).</p>
+                                <ul>
+                                    <li>Die Mitarbeitenden erhalten einen Eintrag "Mitarbeitendengespräch mit {dein Name}".</li>
+                                    <li>Für deinen eigenen Kalender kannst du alle Termine als eine Datei herunterladen. Dort heissen die Einträge "MAG {Name der Person}".</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wofür ist der CSV-Export?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Der CSV-Export erstellt eine Tabelle mit allen Zuteilungen (Name, E-Mail, Datum, Uhrzeit, Dauer) - z.B. für Serien-E-Mails in Outlook oder als Übersicht in Excel.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-category">
+                    <h3>Datenschutz</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Welche Daten speichert das Tool?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Nur das, was für die Terminfindung nötig ist: Name und E-Mail-Adresse der Person (verschlüsselt gespeichert) sowie die gewählten Termine.</p>
+                                <p style="margin-top: 10px;"><strong>Bitte keine Gesprächsinhalte</strong> (Notizen, Beurteilungen, Zielvereinbarungen) über dieses Tool austauschen - es ist nur für die Terminkoordination gedacht.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wer sieht die Antworten?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Nur du. Jede Schulleitung sieht ausschliesslich die Antworten zu ihren eigenen Terminen.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-category">
+                    <h3>Verwaltung & Zurücksetzen</h3>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Wie starte ich eine neue MAG-Runde?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>Wähle im Tab <strong>"Verwaltung"</strong>:</p>
+                                <ul>
+                                    <li><strong>"Antworten & Zuteilungen löschen":</strong> Behält deine Termine und löscht nur die Antworten. Ideal für eine neue Runde mit denselben Zeitfenstern.</li>
+                                    <li><strong>"Alles löschen":</strong> Löscht deine Termine, Antworten und Zuteilungen - für einen kompletten Neustart.</li>
+                                </ul>
+                                <p style="margin-top: 10px;">Gelöscht werden immer nur <strong>deine eigenen</strong> Daten.</p>
+                                <p style="margin-top: 10px; color: #e74c3c;"><strong>Achtung:</strong> Diese Aktionen können nicht rückgängig gemacht werden!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Kann ich einzelne Termine oder Antworten löschen?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p><strong>Termine:</strong> Ja, im Tab "Meine Termine" über den Button "Löschen".</p>
+                                <p style="margin-top: 10px;"><strong>Antworten:</strong> Einzelne Antworten können derzeit nicht gelöscht werden. Nutze dafür die Zurücksetzen-Funktion im Tab "Verwaltung".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
                 <!-- Kontakt -->
                 <div style="background: #e8f4f8; padding: 25px; border-radius: 8px; margin-top: 30px;">
                     <h3 style="color: #667eea; margin-bottom: 15px;">Weitere Fragen?</h3>
-                    <p style="color: #666;">Falls Sie weitere Fragen haben oder technische Probleme auftreten, wenden Sie sich bitte an Ihren Administrator oder konsultieren Sie die README-Dokumentation.</p>
+                    <p style="color: #666;" data-mag-text="hilfe.kontakt">Falls Sie weitere Fragen haben oder technische Probleme auftreten, wenden Sie sich bitte an Ihren Administrator oder konsultieren Sie die README-Dokumentation.</p>
                 </div>
             </div>
         </div>
