@@ -10,8 +10,8 @@
 // (z.B. impressum.html) die Variante kennen. Muss VOR firebase-config.js und texte.js
 // geladen werden.
 
-// Hostnamen der MAG-Instanz (noch festzulegen)
-const MAG_HOSTNAMES = [];
+// Hostnamen der MAG-Instanz (Firebase Hosting im eigenen MAG-Projekt)
+const MAG_HOSTNAMES = ['mag.schueu.ch'];
 
 function ermittleVariante() {
     const host = window.location.hostname;
