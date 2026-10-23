@@ -1,5 +1,5 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp, writeBatch, Timestamp, deleteField } from 'firebase/firestore';
 import fs from 'fs';
 
 const env = await initializeTestEnvironment({ projectId: 'demo-test', firestore: { rules: fs.readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: 8085 } });
@@ -61,7 +61,7 @@ await t('eigene Antworten abfragen (loadAntworten)', true, () => getDocs(query(c
 await t('eigene Termine abfragen', true, () => getDocs(query(collection(A, 'termine'), where('user_id', '==', 'A'))));
 await t('Termin anlegen', true, () => addDoc(collection(A, 'termine'), { user_id: 'A', datum: '2026-11-03', zeit: '10:00', dauer_minuten: 30, ist_verfuegbar: true }));
 await t('eigenen Termin als vergeben markieren', true, () => updateDoc(doc(A, 'termine/tA1'), { ist_verfuegbar: false }));
-await t('eigene Antwort umbenennen (Zusammenführen)', true, () => updateDoc(doc(A, 'antworten/aA'), { kindname: 'Neu' }));
+await t('eigene Antwort umbenennen (Zusammenführen/Trennen)', true, () => updateDoc(doc(A, 'antworten/aA'), { kindname_encrypted: 'neu-enc', kindname_hash: 'neu-hash', kindname: deleteField() }));
 await t('Zuteilungen speichern: 1 löschen + 25 neu in einem Batch', true, async () => {
   const b = writeBatch(A); b.delete(doc(A, 'zuteilungen/zA'));
   for (let i = 0; i < 25; i++) b.set(doc(collection(A, 'zuteilungen')), { termin_id: 't' + i, antwort_id: 'a' + i, user_id: 'A', status: 'zugeteilt', created_at: serverTimestamp() });

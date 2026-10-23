@@ -6,7 +6,7 @@
 // Nur in der MAG-Variante werden sie durch die Texte hier ersetzt.
 // Fehlt ein Schlüssel, bleibt der Eltern-Text stehen.
 //
-// Muss NACH firebase-config.js geladen werden (braucht VARIANTE).
+// Muss NACH variante.js geladen werden (braucht VARIANTE).
 
 const MAG_TEXTE = {
     // ---------- eltern-formular.html ----------
@@ -20,7 +20,7 @@ const MAG_TEXTE = {
     'formular.platzhalter_email': 'deine.email@beispiel.ch',
     'formular.label_termine': 'Welche Termine passen dir? * <span style="font-weight: normal; color: #666;">(Mehrfachauswahl möglich)</span>',
     'formular.label_termine_min': (anzahl, wort) => `Welche Termine passen dir? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${anzahl} ${wort} auswählen)</span>`,
-    'formular.erfolg': '<strong>Vielen Dank!</strong><br>Deine Verfügbarkeit wurde erfolgreich übermittelt.<br><br>Du erhältst eine Bestätigung per E-Mail, sobald die Schulleitung die Termine zugeteilt hat.',
+    'formular.erfolg': '<strong>Vielen Dank!</strong><br>Deine Verfügbarkeit wurde erfolgreich übermittelt.<br><br>Du erhältst eine Bestätigung per E-Mail, sobald die Schulleitung die Termine zugeteilt hat.<br><br>Möchtest du deine Angaben ändern, fülle das Formular einfach nochmals mit demselben Namen aus - es zählt deine neueste Antwort.',
     'formular.fehler_link': 'Ungültiger Link. Bitte verwende den Link, den du von der Schulleitung erhalten hast.',
     'formular.fehler_keine_termine': 'Aktuell sind keine Termine verfügbar. Bitte melde dich bei der Schulleitung.',
     'formular.fehler_alle_vergeben': 'Alle Termine sind bereits vergeben. Bitte melde dich bei der Schulleitung für weitere Möglichkeiten.',
@@ -101,7 +101,74 @@ const MAG_TEXTE = {
     'dashboard.konto_bestaetigen': '<strong>Bitte bestätige deine E-Mail-Adresse.</strong> Bald ist das nötig, um das Tool weiter zu nutzen. Du erhältst dazu einen Link per E-Mail.',
     'dashboard.konto_link_button': '📧 Bestätigungslink senden',
     'dashboard.konto_link_gesendet': (email) => `✓ Link an <strong>${email}</strong> gesendet. Nach dem Bestätigen bitte diese Seite neu laden. (Keine Mail erhalten? Bitte auch den Spam-Ordner prüfen.)`,
-    'dashboard.konto_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.'
+    'dashboard.konto_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.',
+
+    // ---------- lehrer-dashboard.html (Teil 2: Mails, Kalender, Export) ----------
+    'dashboard.platzhalter_ort': 'z.B. Büro Schulleitung',
+    'dashboard.konsole_pruefen': 'Bitte prüfe die Konsole.',
+    'dashboard.vorlagen_intro': 'Kopiere die E-Mail-Texte und sende sie an die Mitarbeitenden:',
+    'dashboard.gesamt_titel': '📅 Deine Termine (Gesamt-Kalender)',
+    'dashboard.gesamt_text': 'Lade alle zugeteilten Termine als eine Kalender-Datei herunter:',
+    'dashboard.csv_text': 'Exportiere die Daten als CSV für Mail-Merge (z.B. in Outlook):',
+
+    // Bestätigungsmail (automatisch) und Kopiervorlage (manuell)
+    'mail.absender_fallback': 'Mitarbeitendengespräch',
+    'mail.betreff': 'Dein Termin für das Mitarbeitendengespräch',
+    'mail.text': (name, datum, zeit, dauer, ort, absender) => `Hallo ${name}
+
+Hiermit bestätige ich den Termin für dein Mitarbeitendengespräch:
+
+Datum: ${datum}
+Uhrzeit: ${zeit} Uhr
+Dauer: ${dauer} Minuten${ort ? `\nOrt: ${ort}` : ''}
+
+Im Anhang findest du den Termin als Kalender-Datei (.ics), die du direkt in deinen Kalender importieren kannst.
+
+Ich freue mich auf unser Gespräch.
+
+Liebe Grüsse
+${absender}`,
+    'mail.vorlage': (name, datum, zeit, dauer, ort) => `Hallo ${name}
+
+Hiermit bestätige ich den Termin für dein Mitarbeitendengespräch:
+
+Datum: ${datum}
+Uhrzeit: ${zeit} Uhr
+Dauer: ${dauer} Minuten${ort ? `\nOrt: ${ort}` : ''}
+
+Ich freue mich auf unser Gespräch.
+
+Liebe Grüsse`,
+
+    // Kalenderdatei (.ics) - Mitarbeitende sehen den Namen der Schulleitung,
+    // die Schulleitung im Gesamt-Kalender den Namen der Person
+    'ics.prodid': '-//MAG-Planer//DE',
+    'ics.kalendername': 'Mitarbeitendengespräche',
+    'ics.uid_praefix': 'mag',
+    'ics.titel': (leitungName) => `Mitarbeitendengespräch mit ${leitungName}`,
+    'ics.beschreibung': 'Mitarbeitendengespräch',
+    'ics.titel_lehrperson': (name) => `MAG ${name}`,
+    'ics.beschreibung_lehrperson': (name) => `Mitarbeitendengespräch mit ${name}`,
+
+    // Dateinamen und CSV
+    'datei.ics_einzel': (safeName) => `MAG_${safeName}.ics`,
+    'datei.ics_alle': 'MAG_Alle.ics',
+    'datei.csv': 'MAG_Export.csv',
+    'csv.kopfzeile': 'Name,Email,Datum,Uhrzeit,Dauer',
+
+    // Erneute Antwort derselben Person: die neueste ersetzt die früheren (nur MAG)
+    'dashboard.antwort_ersetzt': (anzahl) => `Aktualisierte Antwort - ersetzt ${anzahl === 1 ? 'eine frühere Antwort' : anzahl + ' frühere Antworten'}`,
+    'dashboard.neu_zuteilen': (namen) => `<strong>🔄 Neu zuteilen:</strong> ${namen} ${namen.includes(',') ? 'haben' : 'hat'} nach der Zuteilung erneut geantwortet. Die frühere Zuteilung gilt nicht mehr - bitte neu zuteilen und speichern.`,
+
+    // ---------- impressum.html ----------
+    // Die MAG-Datenschutzerklärung steht als eigener Block in impressum.html (data-nur-mag)
+    'impressum.seitentitel': 'Impressum & Datenschutz - MAG-Planer',
+    'impressum.verfuegbarkeit': 'Der Betreiber ist bemüht, den MAG-Planer möglichst unterbrechungsfrei anzubieten. Es kann jedoch keine Garantie für eine jederzeitige Verfügbarkeit übernommen werden. Wartungsarbeiten, technische Störungen oder andere Umstände können zu temporären Einschränkungen führen.',
+    'impressum.zweck': 'Der MAG-Planer ist eine Webanwendung zur Koordination der Termine für Mitarbeitendengespräche (MAG). Die Schulleitungen erstellen Termine und teilen sie zu, die Mitarbeitenden geben ohne Login ihre verfügbaren Zeiten an. Gesprächsinhalte werden im Tool nicht erfasst.',
+
+    // Tab "Hilfe" - die MAG-FAQ selbst steht als eigener Block in lehrer-dashboard.html (data-nur-mag)
+    'hilfe.intro': 'Hier findest du Antworten auf häufig gestellte Fragen zur Nutzung des MAG-Planers.',
+    'hilfe.kontakt': 'Falls du weitere Fragen hast oder technische Probleme auftreten, melde dich beim Betreiber (siehe Impressum).'
 };
 
 function istMagVariante() {
@@ -123,6 +190,7 @@ function variantenText(key, elternText, ...params) {
 //   data-mag-html="key"        -> innerHTML
 //   data-mag-placeholder="key" -> placeholder
 //   data-mag-ausblenden        -> Element ausblenden
+//   data-nur-mag               -> Element einblenden (ist im HTML mit display: none versteckt)
 document.addEventListener('DOMContentLoaded', () => {
     if (!istMagVariante()) return;
 
@@ -137,5 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('[data-mag-ausblenden]').forEach(el => {
         el.style.display = 'none';
+    });
+    document.querySelectorAll('[data-nur-mag]').forEach(el => {
+        el.style.display = '';
     });
 });

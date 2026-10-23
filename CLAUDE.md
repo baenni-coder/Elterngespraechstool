@@ -94,6 +94,8 @@ Dieses Dokument enthält wichtige Informationen für KI-Assistenten, die bei der
   auto_email_enabled: boolean,      // Auto-E-Mail aktiv?
   kontakt_email: string | null,     // Optional: Reply-To-Adresse für Eltern-Rückfragen
                                     // (NICHT als From verwenden - sonst SPF/DKIM-Fail!)
+  gespraechsort: string | null,     // Optional: Ort für Bestätigungsmail ("Ort:"-Zeile) und
+                                    // ICS-LOCATION. Leer = keine Ort-Zeile, LOCATION "Schule"
   updated_at: timestamp
 }
 ```
@@ -267,6 +269,28 @@ elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
 ```
 
 **Hinweis**: Nur der letzte Link wird gespeichert, NICHT mehrere Kinder-Links.
+
+### 8. Varianten: Elterngespräch / Mitarbeitendengespräch (MAG)
+
+Derselbe Code läuft als zwei getrennte Instanzen mit **eigenem Firebase-Projekt**:
+
+- **Weiche** (`variante.js`, ohne Firebase): `VARIANTE` wird über den Hostname bestimmt
+  (`MAG_HOSTNAMES`). Jeder unbekannte Hostname = Eltern-Variante. Lokal testen: `?variante=mag`
+  (wirkt nur auf localhost). Ladereihenfolge: `variante.js` → `firebase-config.js` → `texte.js`.
+- **Firebase-Projekt** (`firebase-config.js`): `VARIANTEN[...].firebaseConfig`. Die MAG-Variante
+  startet nicht, solange `VARIANTEN.mag.firebaseConfig` null ist. Fehlt `variante.js` (alte
+  HTML-Datei im Cache), gilt die Eltern-Variante.
+- **Impressum/Datenschutz** (`impressum.html`): eigene MAG-Fassung als `data-nur-mag`-Block;
+  die Seite lädt bewusst kein Firebase (nur `variante.js` + `texte.js`).
+- **Texte** (`texte.js`): Die Eltern-Texte stehen weiterhin direkt im HTML/Code und werden nur
+  in der MAG-Variante ersetzt:
+  - im Code: `variantenText('key', 'Eltern-Text', ...params)`
+  - im HTML: `data-mag-text`, `data-mag-html`, `data-mag-placeholder`, `data-mag-ausblenden`,
+    `data-nur-mag` (Element ist per `display: none` versteckt und wird nur im MAG eingeblendet)
+- **Logik-Unterschied**: Im MAG zählt pro Name (`kindname_hash`) nur die **neueste** Antwort
+  (`loadAntworten()`, `ersetzteAntworten`) - keine Schnittmenge wie bei getrennten Eltern.
+  War eine ersetzte Antwort schon zugeteilt, zeigt die Zuteilung den Hinweis "Neu zuteilen".
+- Neue Texte immer für **beide** Varianten prüfen; MAG ist in Du-Form.
 
 ## Wichtige Funktionen
 
