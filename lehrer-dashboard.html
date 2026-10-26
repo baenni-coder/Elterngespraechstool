@@ -651,6 +651,10 @@
                 <div id="termine-message"></div>
                 
                 <h3 style="margin-top: 40px; margin-bottom: 15px;" data-mag-text="dashboard.titel_termine_liste">Ihre Termine</h3>
+                <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <button type="button" class="btn btn-primary btn-small" onclick="downloadMeineTermineICS()">📅 Meine Termine als Kalenderdatei (.ics)</button>
+                    <p style="color: #666; font-size: 13px; margin-top: 10px;" data-mag-text="dashboard.meine_termine_hinweis">Alle Ihre Termine für Ihren eigenen Kalender: noch freie als „reserviert“, vergebene mit Namen. Laden Sie die Datei nach Änderungen einfach erneut herunter und importieren Sie sie – bestehende Einträge werden aktualisiert (bei Google Kalender nicht immer zuverlässig). Den Gesamt-Kalender nach der Zuteilung brauchen Sie dann nicht zusätzlich, sonst entstehen doppelte Einträge.</p>
+                </div>
                 <div id="termine-liste" class="termine-liste"></div>
             </div>
             
@@ -937,6 +941,7 @@
                                     <li>Einzelne ICS-Dateien für jeden Termin herunterladen (zum Versenden an Eltern).</li>
                                     <li>Alle Termine als eine ICS-Datei herunterladen (für Ihren eigenen Kalender).</li>
                                 </ul>
+                                <p style="margin-top: 10px;">Im Tab "Meine Termine" können Sie zudem jederzeit <strong>alle Ihre Termine</strong> herunterladen - auch die noch freien (als "reserviert"), um Ihren Kalender zu blockieren. Nach erneutem Herunterladen und Importieren werden bestehende Einträge aktualisiert.</p>
                             </div>
                         </div>
                     </div>
@@ -1166,6 +1171,7 @@
                                     <li>Die Mitarbeitenden erhalten einen Eintrag "Mitarbeitendengespräch mit {dein Name}".</li>
                                     <li>Für deinen eigenen Kalender kannst du alle Termine als eine Datei herunterladen. Dort heissen die Einträge "MAG {Name der Person}".</li>
                                 </ul>
+                                <p style="margin-top: 10px;">Im Tab "Meine Termine" kannst du zudem jederzeit <strong>alle deine Termine</strong> herunterladen - auch die noch freien (als "MAG – reserviert"), um deinen Kalender zu blockieren. Lädst du die Datei später erneut herunter und importierst sie, werden die Einträge aktualisiert (z.B. "reserviert" → "MAG Anna Muster").</p>
                             </div>
                         </div>
                     </div>
@@ -2503,6 +2509,98 @@ END:VEVENT
 `;
         }
         
+        // Alle eigenen Termine als Kalenderdatei für die Lehrperson/Schulleitung:
+        // freie Termine als "reserviert" (vorläufig), vergebene mit Namen.
+        // Pro Termin genau EIN Eintrag mit fester UID und steigender SEQUENCE - so aktualisiert ein
+        // erneuter Import die bestehenden Einträge statt sie zu verdoppeln.
+        async function downloadMeineTermineICS() {
+            if (allTermine.length === 0) {
+                alert(variantenText('dashboard.meine_termine_leer', 'Sie haben noch keine Termine erstellt.'));
+                return;
+            }
+
+            // Aktuelle Zuteilungen holen ('in' erlaubt max. 30 Werte pro Abfrage)
+            const terminIds = allTermine.map(t => t.id);
+            const zuteilungen = [];
+            try {
+                for (let i = 0; i < terminIds.length; i += 30) {
+                    const snapshot = await db.collection('zuteilungen')
+                        .where('termin_id', 'in', terminIds.slice(i, i + 30))
+                        .get();
+                    snapshot.docs.forEach(doc => zuteilungen.push(doc.data()));
+                }
+            } catch (error) {
+                alert('Fehler beim Laden der Zuteilungen: ' + error.message);
+                return;
+            }
+
+            // Namen pro Termin (bei getrennten Eltern mehrere Antworten mit demselben Namen)
+            const namenProTermin = {};
+            zuteilungen.forEach(z => {
+                const antwort = allAntworten.find(a => a.id === z.antwort_id);
+                namenProTermin[z.termin_id] = namenProTermin[z.termin_id] || new Set();
+                if (antwort) namenProTermin[z.termin_id].add(antwort.kindname);
+            });
+
+            const formatICSDate = (date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+            const jetzt = new Date();
+            const dtstamp = formatICSDate(jetzt);
+            const sequence = Math.floor(jetzt.getTime() / 1000); // steigt mit jedem Download
+            const ort = (einstellungen.gespraechsort || '').trim() || 'Schule';
+
+            let icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:${variantenText('ics.prodid', '-//Elterngespräch-Planer//DE')}
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:${variantenText('ics.kalendername', 'Elterngespräche')}
+X-WR-TIMEZONE:Europe/Zurich
+`;
+
+            allTermine.forEach(termin => {
+                const datum = new Date(termin.datum + 'T' + termin.zeit);
+                const endDatum = new Date(datum.getTime() + termin.dauer_minuten * 60000);
+                const namen = [...(namenProTermin[termin.id] || [])].sort();
+                const vergeben = namenProTermin[termin.id] !== undefined;
+
+                let titel, beschreibung;
+                if (!vergeben) {
+                    titel = variantenText('ics.titel_reserviert', 'Elterngespräch – reserviert (noch nicht vergeben)');
+                    beschreibung = variantenText('ics.beschreibung_reserviert', 'Termin für Elterngespräche - noch nicht vergeben');
+                } else if (namen.length > 0) {
+                    const name = namen.join(', ');
+                    titel = variantenText('ics.titel_lehrperson', `Elterngespräch - ${name}`, name);
+                    beschreibung = variantenText('ics.beschreibung_lehrperson', `Elterngespräch mit den Eltern von ${name}`, name);
+                } else {
+                    // Zugeteilt, aber die Antwort ist nicht (mehr) geladen
+                    titel = variantenText('ics.titel_vergeben', 'Elterngespräch - vergeben');
+                    beschreibung = titel;
+                }
+
+                icsContent += `BEGIN:VEVENT
+UID:${variantenText('ics.uid_praefix', 'elterngespraech')}-termin-${termin.id}@elterngespraeche.app
+DTSTAMP:${dtstamp}
+DTSTART:${formatICSDate(datum)}
+DTEND:${formatICSDate(endDatum)}
+SUMMARY:${icsText(titel)}
+DESCRIPTION:${icsText(beschreibung)}
+LOCATION:${icsText(ort)}
+STATUS:${vergeben ? 'CONFIRMED' : 'TENTATIVE'}
+TRANSP:OPAQUE
+SEQUENCE:${sequence}
+END:VEVENT
+`;
+            });
+
+            icsContent += 'END:VCALENDAR';
+
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = variantenText('datei.ics_meine_termine', 'Elterngespraeche_Meine_Termine.ics');
+            link.click();
+        }
+
         function downloadCSV() {
             let csv = variantenText('csv.kopfzeile', 'Kindname,Email,Datum,Uhrzeit,Dauer') + '\n';
 
