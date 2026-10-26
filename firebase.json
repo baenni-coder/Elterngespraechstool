@@ -11,7 +11,11 @@
       "**/node_modules/**",
       "README.md",
       "firestore.rules",
-      "firestore.indexes.json"
+      "firestore.indexes.json",
+      "CLAUDE.md",
+      "CNAME",
+      "migrate-data.html",
+      "tests/**"
     ],
     "rewrites": [
       {
