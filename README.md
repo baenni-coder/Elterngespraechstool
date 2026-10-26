@@ -90,12 +90,11 @@ firebase init
 # - Wähle dein Projekt aus
 # - Übernehme die Standard-Dateinamen (firestore.rules, etc.)
 
-# Projekt ID in .firebaserc eintragen
-# Öffne .firebaserc und ersetze "DEIN_FIREBASE_PROJEKT_ID" mit deiner echten Projekt-ID
-
-# Rules und Indexes deployen
-firebase deploy --only firestore:rules
-firebase deploy --only firestore:indexes
+# Rules und Indexes deployen - das Projekt immer ausdrücklich angeben.
+# .firebaserc enthält bewusst KEIN Standardprojekt (nur den Alias "mag"),
+# damit nie aus Versehen ins falsche Projekt deployt wird.
+firebase deploy --only firestore:rules --project DEINE-PROJEKT-ID
+firebase deploy --only firestore:indexes --project DEINE-PROJEKT-ID
 ```
 
 **Option B: Manuell über Firebase Console**
@@ -119,10 +118,8 @@ Falls du die Indexes manuell erstellen musst:
 Um die App auf Firebase Hosting zu deployen:
 
 ```bash
-# Projekt ID in .firebaserc eintragen (falls noch nicht geschehen)
-
-# Hosting deployen
-firebase deploy --only hosting
+# Hosting deployen (Projekt immer ausdrücklich angeben)
+firebase deploy --only hosting --project DEINE-PROJEKT-ID
 
 # Deine App ist jetzt live unter:
 # https://DEINE-PROJEKT-ID.web.app
