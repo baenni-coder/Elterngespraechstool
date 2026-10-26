@@ -20,9 +20,15 @@ const VARIANTEN = {
         }
     },
     mag: {
-        // Eigenes Firebase-Projekt - wird eingetragen, sobald es existiert.
-        // Solange null, startet die MAG-Variante bewusst NICHT (nie in die Eltern-Datenbank schreiben!)
-        firebaseConfig: null
+        // Eigenes Firebase-Projekt "mag-planer" (Datenbank in europe-west6 / Zürich)
+        firebaseConfig: {
+            apiKey: "AIzaSyCW065CuXN2ZcOtu1K-zDzAu4n5XgoTFLQ",
+            authDomain: "mag-planer.firebaseapp.com",
+            projectId: "mag-planer",
+            storageBucket: "mag-planer.firebasestorage.app",
+            messagingSenderId: "793880233537",
+            appId: "1:793880233537:web:9b4f03cf476b107e3568c0"
+        }
     }
 };
 
