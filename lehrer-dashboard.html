@@ -51,6 +51,7 @@
         
         .header-actions {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
         }
         
@@ -540,6 +541,7 @@
                 <p id="user-email" style="opacity: 0.9; margin-top: 5px;"></p>
             </div>
             <div class="header-actions">
+                <button class="btn btn-white" onclick="passwortAendern()">🔑 Passwort ändern</button>
                 <button class="btn btn-white" onclick="helpers.logout()">Abmelden</button>
             </div>
         </div>
@@ -2665,6 +2667,25 @@ END:VEVENT
                 </div>`;
             } else {
                 hinweis.innerHTML = '';
+            }
+        }
+
+        // Passwort ändern: Rücksetz-Link an die eigene Login-Adresse (Firebase-Ablauf). So fasst
+        // das Tool nie ein Passwort an, und die Person beweist den Zugriff auf ihr Postfach.
+        async function passwortAendern() {
+            const email = currentUser.email;
+            if (!confirm(variantenText('dashboard.passwort_confirm',
+                `Wir schicken Ihnen einen Link an ${email}. Darüber können Sie ein neues Passwort festlegen.\n\nFortfahren?`, email))) {
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                alert(variantenText('dashboard.passwort_gesendet',
+                    `✓ Link an ${email} gesendet. Bitte öffnen Sie ihn und legen Sie Ihr neues Passwort fest (auch den Spam-Ordner prüfen). Danach müssen Sie sich eventuell neu anmelden.`, email));
+            } catch (error) {
+                alert(error.code === 'auth/too-many-requests'
+                    ? variantenText('dashboard.konto_zu_viele', 'Es wurden zu viele Links angefordert. Bitte versuchen Sie es in einigen Minuten erneut.')
+                    : 'Fehler: ' + error.message);
             }
         }
 

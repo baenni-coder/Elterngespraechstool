@@ -189,6 +189,10 @@
                 <button type="submit" class="btn" id="login-btn">Anmelden</button>
             </form>
 
+            <div class="back-link" style="margin-top: 12px;">
+                <a href="#" onclick="passwortVergessen(event)">Passwort vergessen?</a>
+            </div>
+
             <div class="divider" data-mag-ausblenden>oder</div>
 
             <button class="btn btn-secondary" onclick="showRegister()" data-mag-ausblenden>Neues Konto erstellen</button>
@@ -245,6 +249,46 @@
                     messageDiv.innerHTML = '';
                 }, 3000);
             }
+        }
+
+        // Text für innerHTML entschärfen (Benutzereingaben in Meldungen)
+        function htmlText(text) {
+            return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Rücksetz-Link über Firebase anfordern. Ob ein Konto existiert, wird bewusst nicht
+        // verraten (gleiche Meldung) - sonst liesse sich ausprobieren, welche Adressen ein Konto haben.
+        async function passwortVergessen(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+
+            if (!email) {
+                showMessage(variantenText('login.vergessen_email_fehlt', 'Bitte geben Sie oben Ihre E-Mail-Adresse ein und klicken Sie dann nochmals auf „Passwort vergessen?“.'), 'info');
+                document.getElementById('login-email').focus();
+                return;
+            }
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+            } catch (error) {
+                if (error.code === 'auth/invalid-email') {
+                    showMessage(variantenText('login.vergessen_ungueltig', 'Bitte geben Sie eine gültige E-Mail-Adresse ein.'), 'error');
+                    return;
+                }
+                if (error.code === 'auth/too-many-requests') {
+                    showMessage(variantenText('login.vergessen_zu_viele', 'Es wurden zu viele Links angefordert. Bitte versuchen Sie es in einigen Minuten erneut.'), 'error');
+                    return;
+                }
+                if (error.code !== 'auth/user-not-found') {
+                    showMessage('Fehler: ' + htmlText(error.message), 'error');
+                    return;
+                }
+                // auth/user-not-found: gleiche Meldung wie bei Erfolg (siehe oben)
+            }
+
+            showMessage(variantenText('login.vergessen_gesendet',
+                `Falls ein Konto mit <strong>${htmlText(email)}</strong> existiert, haben wir Ihnen einen Link zum Zurücksetzen des Passworts geschickt. Bitte prüfen Sie auch den Spam-Ordner.`,
+                htmlText(email)), 'info');
         }
 
         function showRegister() {

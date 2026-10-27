@@ -42,6 +42,10 @@ const MAG_TEXTE = {
     'login.titel': '💼 Login Schulleitung',
     'login.untertitel': 'Melde dich an, um Termine zu verwalten',
     'login.erfolg': '✓ Erfolgreich angemeldet! Du wirst weitergeleitet...',
+    'login.vergessen_email_fehlt': 'Bitte gib oben deine E-Mail-Adresse ein und klicke dann nochmals auf „Passwort vergessen?“.',
+    'login.vergessen_ungueltig': 'Bitte gib eine gültige E-Mail-Adresse ein.',
+    'login.vergessen_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.',
+    'login.vergessen_gesendet': (email) => `Falls ein Konto mit <strong>${email}</strong> existiert, haben wir dir einen Link zum Zurücksetzen des Passworts geschickt. Bitte prüfe auch den Spam-Ordner.`,
 
     // ---------- lehrer-dashboard.html (Teil 1: Oberfläche) ----------
     // Hinweise zu "Elternteilen" erscheinen nur bei mehreren Antworten pro Name
@@ -101,6 +105,8 @@ const MAG_TEXTE = {
     'dashboard.konto_bestaetigen': '<strong>Bitte bestätige deine E-Mail-Adresse.</strong> Bald ist das nötig, um das Tool weiter zu nutzen. Du erhältst dazu einen Link per E-Mail.',
     'dashboard.konto_link_button': '📧 Bestätigungslink senden',
     'dashboard.konto_link_gesendet': (email) => `✓ Link an <strong>${email}</strong> gesendet. Nach dem Bestätigen bitte diese Seite neu laden. (Keine Mail erhalten? Bitte auch den Spam-Ordner prüfen.)`,
+    'dashboard.passwort_confirm': (email) => `Wir schicken dir einen Link an ${email}. Darüber kannst du ein neues Passwort festlegen.\n\nFortfahren?`,
+    'dashboard.passwort_gesendet': (email) => `✓ Link an ${email} gesendet. Bitte öffne ihn und lege dein neues Passwort fest (auch den Spam-Ordner prüfen). Danach musst du dich eventuell neu anmelden.`,
     'dashboard.konto_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.',
 
     // ---------- lehrer-dashboard.html (Teil 2: Mails, Kalender, Export) ----------
