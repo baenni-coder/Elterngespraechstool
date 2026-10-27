@@ -151,7 +151,7 @@ Liebe Grüsse`,
     'ics.beschreibung_lehrperson': (name) => `Mitarbeitendengespräch mit ${name}`,
 
     // "Meine Termine als Kalenderdatei" (alle Termine, freie als reserviert)
-    'dashboard.meine_termine_hinweis': 'Alle deine Termine für deinen eigenen Kalender: noch freie als „reserviert“, vergebene mit Namen. Lade die Datei nach Änderungen einfach erneut herunter und importiere sie – bestehende Einträge werden aktualisiert (bei Google Kalender nicht immer zuverlässig). Den Gesamt-Kalender nach der Zuteilung brauchst du dann nicht zusätzlich, sonst entstehen doppelte Einträge.',
+    'dashboard.meine_termine_hinweis': 'Alle deine Termine für deinen eigenen Kalender: noch freie als „reserviert“, vergebene mit Namen. Lade die Datei nach Änderungen einfach erneut herunter und importiere sie – bestehende Einträge werden aktualisiert (bei Google Kalender nicht immer zuverlässig). Die Datei „Alle Termine herunterladen“ im Tab „Zuteilung“ verwendet dieselben Einträge – auch zusammen importiert bleibt es ein Eintrag pro Termin.',
     'dashboard.meine_termine_leer': 'Du hast noch keine Termine erstellt.',
     'ics.titel_reserviert': 'MAG – reserviert (noch nicht vergeben)',
     'ics.beschreibung_reserviert': 'Termin für Mitarbeitendengespräche - noch nicht vergeben',

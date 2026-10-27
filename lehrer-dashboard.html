@@ -653,7 +653,7 @@
                 <h3 style="margin-top: 40px; margin-bottom: 15px;" data-mag-text="dashboard.titel_termine_liste">Ihre Termine</h3>
                 <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                     <button type="button" class="btn btn-primary btn-small" onclick="downloadMeineTermineICS()">📅 Meine Termine als Kalenderdatei (.ics)</button>
-                    <p style="color: #666; font-size: 13px; margin-top: 10px;" data-mag-text="dashboard.meine_termine_hinweis">Alle Ihre Termine für Ihren eigenen Kalender: noch freie als „reserviert“, vergebene mit Namen. Laden Sie die Datei nach Änderungen einfach erneut herunter und importieren Sie sie – bestehende Einträge werden aktualisiert (bei Google Kalender nicht immer zuverlässig). Den Gesamt-Kalender nach der Zuteilung brauchen Sie dann nicht zusätzlich, sonst entstehen doppelte Einträge.</p>
+                    <p style="color: #666; font-size: 13px; margin-top: 10px;" data-mag-text="dashboard.meine_termine_hinweis">Alle Ihre Termine für Ihren eigenen Kalender: noch freie als „reserviert“, vergebene mit Namen. Laden Sie die Datei nach Änderungen einfach erneut herunter und importieren Sie sie – bestehende Einträge werden aktualisiert (bei Google Kalender nicht immer zuverlässig). Die Datei „Alle Termine herunterladen“ im Tab „Zuteilung“ verwendet dieselben Einträge – auch zusammen importiert bleibt es ein Eintrag pro Termin.</p>
                 </div>
                 <div id="termine-liste" class="termine-liste"></div>
             </div>
@@ -2417,31 +2417,21 @@ Mit freundlichen Grüssen`, antwort.kindname, formattedDate, termin.zeit, termin
             link.click();
         }
         
+        // Gesamt-Kalender der Lehrperson/Schulleitung (Tab "Zuteilung", nach dem Speichern):
+        // nur die vergebenen Termine. Gleiche Einträge (UID, SEQUENCE) wie "Meine Termine" -
+        // egal welche der beiden Dateien importiert wird, pro Termin bleibt es EIN Eintrag.
         function downloadAllICS() {
-            let icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:${variantenText('ics.prodid', '-//Elterngespräch-Planer//DE')}
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-X-WR-CALNAME:${variantenText('ics.kalendername', 'Elterngespräche')}
-X-WR-TIMEZONE:Europe/Zurich
-`;
-
-            // Iteriere über kinderGruppen statt assignments
+            const namenProTermin = {};
             Object.keys(assignments).forEach(hash => {
                 const gruppe = window.kinderGruppen[hash];
-                const termin = allTermine.find(t => t.id === assignments[hash]);
-
-                if (!gruppe || !termin) return;
-
-                // Erstelle Event für jedes Elternteil in der Gruppe
-                gruppe.antworten.forEach(antwort => {
-                    const event = generateICSEvent(termin, antwort, true); // Gesamt-Kalender der Lehrperson
-                    icsContent += event;
-                });
+                const terminId = assignments[hash];
+                if (!gruppe || !allTermine.some(t => t.id === terminId)) return;
+                namenProTermin[terminId] = namenProTermin[terminId] || new Set();
+                namenProTermin[terminId].add(gruppe.kindname);
             });
 
-            icsContent += 'END:VCALENDAR';
+            const vergebeneTermine = allTermine.filter(t => namenProTermin[t.id] !== undefined);
+            const icsContent = eigenerKalenderICS(vergebeneTermine, namenProTermin);
 
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const link = document.createElement('a');
@@ -2509,39 +2499,12 @@ END:VEVENT
 `;
         }
         
-        // Alle eigenen Termine als Kalenderdatei für die Lehrperson/Schulleitung:
-        // freie Termine als "reserviert" (vorläufig), vergebene mit Namen.
+        // Kalenderdatei für den EIGENEN Kalender der Lehrperson/Schulleitung.
+        // Gemeinsam genutzt von "Meine Termine" (alle Termine) und dem Gesamt-Kalender (nur vergebene).
+        // namenProTermin: { terminId: Set(Namen) } - fehlt ein Termin darin, gilt er als frei.
         // Pro Termin genau EIN Eintrag mit fester UID und steigender SEQUENCE - so aktualisiert ein
         // erneuter Import die bestehenden Einträge statt sie zu verdoppeln.
-        async function downloadMeineTermineICS() {
-            if (allTermine.length === 0) {
-                alert(variantenText('dashboard.meine_termine_leer', 'Sie haben noch keine Termine erstellt.'));
-                return;
-            }
-
-            // Aktuelle Zuteilungen holen ('in' erlaubt max. 30 Werte pro Abfrage)
-            const terminIds = allTermine.map(t => t.id);
-            const zuteilungen = [];
-            try {
-                for (let i = 0; i < terminIds.length; i += 30) {
-                    const snapshot = await db.collection('zuteilungen')
-                        .where('termin_id', 'in', terminIds.slice(i, i + 30))
-                        .get();
-                    snapshot.docs.forEach(doc => zuteilungen.push(doc.data()));
-                }
-            } catch (error) {
-                alert('Fehler beim Laden der Zuteilungen: ' + error.message);
-                return;
-            }
-
-            // Namen pro Termin (bei getrennten Eltern mehrere Antworten mit demselben Namen)
-            const namenProTermin = {};
-            zuteilungen.forEach(z => {
-                const antwort = allAntworten.find(a => a.id === z.antwort_id);
-                namenProTermin[z.termin_id] = namenProTermin[z.termin_id] || new Set();
-                if (antwort) namenProTermin[z.termin_id].add(antwort.kindname);
-            });
-
+        function eigenerKalenderICS(termine, namenProTermin) {
             const formatICSDate = (date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
             const jetzt = new Date();
             const dtstamp = formatICSDate(jetzt);
@@ -2557,7 +2520,7 @@ X-WR-CALNAME:${variantenText('ics.kalendername', 'Elterngespräche')}
 X-WR-TIMEZONE:Europe/Zurich
 `;
 
-            allTermine.forEach(termin => {
+            termine.forEach(termin => {
                 const datum = new Date(termin.datum + 'T' + termin.zeit);
                 const endDatum = new Date(datum.getTime() + termin.dauer_minuten * 60000);
                 const namen = [...(namenProTermin[termin.id] || [])].sort();
@@ -2593,6 +2556,41 @@ END:VEVENT
             });
 
             icsContent += 'END:VCALENDAR';
+            return icsContent;
+        }
+
+        // Alle eigenen Termine als Kalenderdatei (Tab "Meine Termine"):
+        // freie Termine als "reserviert" (vorläufig), vergebene mit Namen.
+        async function downloadMeineTermineICS() {
+            if (allTermine.length === 0) {
+                alert(variantenText('dashboard.meine_termine_leer', 'Sie haben noch keine Termine erstellt.'));
+                return;
+            }
+
+            // Aktuelle Zuteilungen holen ('in' erlaubt max. 30 Werte pro Abfrage)
+            const terminIds = allTermine.map(t => t.id);
+            const zuteilungen = [];
+            try {
+                for (let i = 0; i < terminIds.length; i += 30) {
+                    const snapshot = await db.collection('zuteilungen')
+                        .where('termin_id', 'in', terminIds.slice(i, i + 30))
+                        .get();
+                    snapshot.docs.forEach(doc => zuteilungen.push(doc.data()));
+                }
+            } catch (error) {
+                alert('Fehler beim Laden der Zuteilungen: ' + error.message);
+                return;
+            }
+
+            // Namen pro Termin (bei getrennten Eltern mehrere Antworten mit demselben Namen)
+            const namenProTermin = {};
+            zuteilungen.forEach(z => {
+                const antwort = allAntworten.find(a => a.id === z.antwort_id);
+                namenProTermin[z.termin_id] = namenProTermin[z.termin_id] || new Set();
+                if (antwort) namenProTermin[z.termin_id].add(antwort.kindname);
+            });
+
+            const icsContent = eigenerKalenderICS(allTermine, namenProTermin);
 
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const link = document.createElement('a');
