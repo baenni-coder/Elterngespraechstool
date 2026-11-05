@@ -419,11 +419,9 @@
                 }
 
                 // Hole bereits zugeteilte Termine
-                const zuteilungenSnapshot = await db.collection('zuteilungen')
-                    .where('termin_id', 'in', termine.map(t => t.id))
-                    .get();
+                const zuteilungenDocs = await helpers.zuteilungenFuerTermine(termine.map(t => t.id));
 
-                const zugeteilteIds = zuteilungenSnapshot.docs.map(doc => doc.data().termin_id);
+                const zugeteilteIds = zuteilungenDocs.map(doc => doc.data().termin_id);
 
                 // Filtere bereits zugeteilte Termine raus
                 verfuegbareTermine = termine.filter(t => !zugeteilteIds.includes(t.id));

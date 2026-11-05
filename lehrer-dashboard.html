@@ -1829,11 +1829,9 @@
             window.kinderGruppen = kinderGruppen; // Speichere global für renderZuteilungsArea
 
             // Lade bestehende Zuteilungen
-            const zuteilungenSnapshot = await db.collection('zuteilungen')
-                .where('termin_id', 'in', allTermine.map(t => t.id))
-                .get();
+            const zuteilungenDocs = await helpers.zuteilungenFuerTermine(allTermine.map(t => t.id));
 
-            const zuteilungen = zuteilungenSnapshot.docs.map(doc => ({
+            const zuteilungen = zuteilungenDocs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
@@ -2008,11 +2006,9 @@
 
                 // Schritt 1: Hole existierende Zuteilungen
                 console.log('Schritt 1: Hole existierende Zuteilungen...');
-                const existingZuteilungenSnapshot = await db.collection('zuteilungen')
-                    .where('termin_id', 'in', allTermine.map(t => t.id))
-                    .get();
+                const existingZuteilungenDocs = await helpers.zuteilungenFuerTermine(allTermine.map(t => t.id));
 
-                const existingZuteilungen = existingZuteilungenSnapshot.docs.map(doc => ({
+                const existingZuteilungen = existingZuteilungenDocs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
@@ -2569,16 +2565,10 @@ END:VEVENT
                 return;
             }
 
-            // Aktuelle Zuteilungen holen ('in' erlaubt max. 30 Werte pro Abfrage)
-            const terminIds = allTermine.map(t => t.id);
-            const zuteilungen = [];
+            // Aktuelle Zuteilungen holen
+            let zuteilungen;
             try {
-                for (let i = 0; i < terminIds.length; i += 30) {
-                    const snapshot = await db.collection('zuteilungen')
-                        .where('termin_id', 'in', terminIds.slice(i, i + 30))
-                        .get();
-                    snapshot.docs.forEach(doc => zuteilungen.push(doc.data()));
-                }
+                zuteilungen = (await helpers.zuteilungenFuerTermine(allTermine.map(t => t.id))).map(doc => doc.data());
             } catch (error) {
                 alert('Fehler beim Laden der Zuteilungen: ' + error.message);
                 return;
