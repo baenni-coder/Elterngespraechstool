@@ -51,6 +51,20 @@ const db = firebase.firestore();
 
 // Hilfsfunktionen
 const helpers = {
+    // Zuteilungs-Dokumente zu einer Liste von Termin-IDs laden.
+    // Firestore erlaubt in einer 'in'-Abfrage höchstens 30 Werte - darum in 30er-Blöcken.
+    // Gibt die Dokument-Snapshots zurück (doc.id, doc.data()).
+    zuteilungenFuerTermine: async (terminIds) => {
+        const docs = [];
+        for (let i = 0; i < terminIds.length; i += 30) {
+            const snapshot = await db.collection('zuteilungen')
+                .where('termin_id', 'in', terminIds.slice(i, i + 30))
+                .get();
+            docs.push(...snapshot.docs);
+        }
+        return docs;
+    },
+
     // Datum formatieren
     formatDate: (date) => {
         return new Date(date).toLocaleDateString('de-CH', {
