@@ -577,7 +577,22 @@
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
 
-                    <!-- Mindestanzahl Termine -->
+                    <!-- Buchungsart (nur MAG, siehe texte.js / data-nur-mag) -->
+                    <div data-nur-mag style="display: none;">
+                        <div class="form-group">
+                            <label>Buchungsart</label>
+                            <select id="buchungsart" onchange="aktualisiereBuchungsart()" style="width: 100%; max-width: 400px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                                <option value="zuteilung">Verfügbarkeit angeben – du teilst die Termine zu</option>
+                                <option value="direkt">Direkt buchen – wer zuerst bucht, hat den Termin</option>
+                            </select>
+                            <p style="color: #666; font-size: 13px; margin-top: 8px;">Bei „Direkt buchen“ wählen die Mitarbeitenden im Formular genau einen freien Termin, der sofort fest gebucht ist. Es gibt dabei keine Bestätigungsmail; die Buchung wird im Formular bestätigt (mit Kalenderdatei). Buchungen siehst und änderst du im Tab „Zuteilung“.</p>
+                        </div>
+
+                        <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
+                    </div>
+
+                    <!-- Mindestanzahl Termine (entfällt bei Direktbuchung) -->
+                    <div id="min-termine-block">
                     <div class="form-group">
                         <label data-mag-text="dashboard.label_min_termine">Mindestanzahl Termine (die Eltern auswählen müssen)</label>
                         <input type="number" id="min-termine" min="1" max="10" value="3" style="width: 80px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
@@ -585,6 +600,7 @@
                     </div>
 
                     <div style="height: 1px; background: #ddd; margin: 20px 0;"></div>
+                    </div>
 
                     <!-- Standard-Gesprächsdauer -->
                     <div class="form-group">
@@ -1100,6 +1116,25 @@
 
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Was bedeutet die Buchungsart „Direkt buchen“?</span>
+                            <span class="faq-arrow">▼</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-content">
+                                <p>In den Einstellungen kannst du wählen, wie die Termine vergeben werden:</p>
+                                <ul>
+                                    <li><strong>Verfügbarkeit angeben (Standard):</strong> Die Mitarbeitenden wählen mehrere passende Termine, du teilst danach im Tab "Zuteilung" zu.</li>
+                                    <li><strong>Direkt buchen:</strong> Die Mitarbeitenden wählen im Formular genau einen freien Termin, der sofort fest gebucht ist. Wer zuerst bucht, hat den Termin - doppelt vergeben werden kann er nicht. Die Mindestanzahl entfällt.</li>
+                                </ul>
+                                <p style="margin-top: 10px;">Bei der Direktbuchung gibt es <strong>keine Bestätigungsmail</strong>: Die Buchung wird im Formular bestätigt, mit Kalenderdatei zum Herunterladen.</p>
+                                <p style="margin-top: 10px;"><strong>Umbuchen oder absagen</strong> geht nur über dich: Im Tab "Zuteilung" teilst du die Person einem anderen Termin zu oder hebst die Zuteilung auf und speicherst. Der frühere Termin ist danach wieder buchbar. Bucht jemand zweimal mit demselben Namen, zählt die neueste Buchung; die frühere wird beim nächsten Speichern freigegeben.</p>
+                                <p style="margin-top: 10px;"><strong>Hinweis:</strong> Ist der automatische E-Mail-Versand aktiviert, erhalten beim Speichern im Tab "Zuteilung" alle zugeteilten Personen eine Bestätigung per Mail.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
                             <span>Was passiert, wenn jemand das Formular zweimal ausfüllt?</span>
                             <span class="faq-arrow">▼</span>
                         </div>
@@ -1503,6 +1538,10 @@
                         document.getElementById('gespraechsort').value = settings.gespraechsort;
                     }
 
+                    // Buchungsart (nur MAG relevant)
+                    document.getElementById('buchungsart').value = settings.buchungsart === 'direkt' ? 'direkt' : 'zuteilung';
+                    aktualisiereBuchungsart();
+
                     // Name der Lehrperson
                     if (settings.teacher_name) {
                         document.getElementById('teacher-name').value = settings.teacher_name;
@@ -1559,6 +1598,7 @@
             const autoEmailEnabled = document.getElementById('auto-email-enabled').checked;
             const kontaktEmail = document.getElementById('kontakt-email').value.trim();
             const gespraechsortWert = document.getElementById('gespraechsort').value.trim();
+            const buchungsartWert = document.getElementById('buchungsart').value;
 
             if (kontaktEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(kontaktEmail)) {
                 alert(variantenText('dashboard.fehler_kontakt_email', 'Bitte geben Sie eine gültige Kontakt-E-Mail-Adresse ein oder lassen Sie das Feld leer.'));
@@ -1572,6 +1612,8 @@
                 auto_email_enabled: autoEmailEnabled,
                 kontakt_email: kontaktEmail || null,
                 gespraechsort: gespraechsortWert || null,
+                // Buchungsart nur in der MAG-Variante speichern (Eltern: immer Zuteilung)
+                ...(istMagVariante() ? { buchungsart: buchungsartWert } : {}),
                 absender_email: firebase.firestore.FieldValue.delete(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             };
@@ -1953,6 +1995,12 @@
             });
         }
         
+        // Mindestanzahl ausblenden, wenn direkt gebucht wird (nur MAG)
+        function aktualisiereBuchungsart() {
+            const direkt = istMagVariante() && document.getElementById('buchungsart').value === 'direkt';
+            document.getElementById('min-termine-block').style.display = direkt ? 'none' : '';
+        }
+
         async function saveZuteilungen() {
             if (Object.keys(assignments).length === 0) {
                 alert(variantenText('dashboard.zuteilung_leer', 'Bitte teilen Sie mindestens einem Elternpaar einen Termin zu.'));
@@ -2014,6 +2062,20 @@
                 }));
 
                 console.log('Gefundene Zuteilungen:', existingZuteilungen);
+
+                // Direktbuchung: Sind seit dem Laden der Ansicht neue Buchungen eingegangen?
+                // Dann NICHT speichern - sonst würden diese Buchungen gelöscht und die Termine freigegeben.
+                if (istMagVariante() && einstellungen.buchungsart === 'direkt') {
+                    const bekannteAntworten = new Set([...allAntworten.map(a => a.id), ...Object.values(ersetzteAntworten).flat()]);
+                    if (existingZuteilungen.some(z => !bekannteAntworten.has(z.antwort_id))) {
+                        alert(variantenText('dashboard.neue_buchungen', 'Inzwischen sind neue Buchungen eingegangen. Die Ansicht wird neu geladen - bitte prüfen Sie die Zuteilung und speichern Sie erneut.'));
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        await loadAntworten();
+                        await loadZuteilungsView();
+                        return;
+                    }
+                }
 
                 // Schritt 2: Lösche alte Zuteilungen
                 if (existingZuteilungen.length > 0) {

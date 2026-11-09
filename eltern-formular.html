@@ -320,6 +320,13 @@
                 </form>
             </div>
             
+            <!-- MAG-Direktbuchung: Bestätigung (wird per JS befüllt) -->
+            <div id="success-direkt" style="display: none;">
+                <div class="success-icon">✅</div>
+                <div class="alert alert-success" id="success-direkt-text"></div>
+                <button type="button" class="btn btn-secondary" onclick="downloadBuchungICS()">📅 Termin in meinen Kalender (.ics)</button>
+            </div>
+
             <div id="success-message">
                 <div class="success-icon">✅</div>
                 <div class="alert alert-success" data-mag-html="formular.erfolg">
@@ -344,6 +351,9 @@
         let verfuegbareTermine = [];
         let minTermineAnzahl = 3; // Standardwert
         let teacherName = '';
+        let direktbuchung = false; // nur MAG: Schulleitung hat "Direkt buchen" eingestellt
+        let gespraechsort = '';
+        let gebuchterTermin = null; // nach erfolgreicher Direktbuchung (für Kalenderdatei)
 
         // Beim Laden: Lehrer-ID aus URL holen und Termine laden
         window.onload = async () => {
@@ -389,6 +399,9 @@
                 if (doc.exists) {
                     const settings = doc.data();
                     minTermineAnzahl = settings.min_termine_anzahl || 3;
+                    // Direktbuchung gibt es nur in der MAG-Variante
+                    direktbuchung = istMagVariante() && settings.buchungsart === 'direkt';
+                    gespraechsort = (settings.gespraechsort || '').trim();
                 } else {
                     minTermineAnzahl = 3; // Standardwert
                 }
@@ -448,10 +461,16 @@
             document.getElementById('loading').style.display = 'none';
             document.getElementById('form-container').style.display = 'block';
 
-            // Aktualisiere Label mit Mindestanzahl
+            // Aktualisiere Label mit Mindestanzahl (bzw. Direktbuchung: genau ein Termin)
             const label = document.getElementById('termine-label');
             const minWort = minTermineAnzahl === 1 ? 'Termin' : 'Termine';
-            label.innerHTML = variantenText('formular.label_termine_min', `Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${minTermineAnzahl} ${minWort} auswählen)</span>`, minTermineAnzahl, minWort);
+            if (direktbuchung) {
+                label.innerHTML = variantenText('formular.label_termin_direkt', 'Welcher Termin passt Ihnen? *');
+                document.getElementById('submit-btn').textContent = variantenText('formular.button_buchen', 'Termin buchen');
+            } else {
+                label.innerHTML = variantenText('formular.label_termine_min', `Welche Termine passen Ihnen? * <span style="font-weight: normal; color: #666;">(Bitte mindestens ${minTermineAnzahl} ${minWort} auswählen)</span>`, minTermineAnzahl, minWort);
+            }
+            const eingabeTyp = direktbuchung ? 'radio' : 'checkbox';
 
             const termineList = document.getElementById('termine-list');
             termineList.innerHTML = '';
@@ -468,12 +487,19 @@
                 const div = document.createElement('div');
                 div.className = 'checkbox-item';
                 div.innerHTML = `
-                    <input type="checkbox" id="termin-${termin.id}" value="${termin.id}">
+                    <input type="${eingabeTyp}" name="termin" id="termin-${termin.id}" value="${termin.id}">
                     <label for="termin-${termin.id}">${formattedDate}, ${termin.zeit} Uhr (${termin.dauer_minuten} Min.)</label>
                 `;
                 
                 // Toggle checked class beim Klicken
                 div.onclick = function(e) {
+                    if (direktbuchung) {
+                        // Genau ein Termin: dieser wird markiert, alle anderen nicht
+                        this.querySelector('input').checked = true;
+                        termineList.querySelectorAll('.checkbox-item').forEach(el => el.classList.remove('checked'));
+                        this.classList.add('checked');
+                        return;
+                    }
                     if (e.target.type !== 'checkbox') {
                         const checkbox = this.querySelector('input[type="checkbox"]');
                         checkbox.checked = !checkbox.checked;
@@ -524,6 +550,11 @@
             }
 
             const email = document.getElementById('email').value.trim();
+
+            if (direktbuchung) {
+                await terminDirektBuchen(kindnamen[0], email);
+                return;
+            }
 
             const selectedTermine = [];
             document.querySelectorAll('#termine-list input[type="checkbox"]:checked').forEach(cb => {
@@ -591,6 +622,106 @@
             }
         }
         
+        // MAG-Direktbuchung: Antwort + Buchung "direkt_<terminId>" + Termin belegt in EINEM Batch.
+        // Die Firestore-Rules lassen das nur zu, wenn der Termin noch frei ist - ein zweiter Versuch
+        // auf denselben Termin scheitert als Ganzes (siehe firestore.rules, direktbuchung*).
+        async function terminDirektBuchen(name, email) {
+            const auswahl = document.querySelector('#termine-list input[name="termin"]:checked');
+            if (!auswahl) {
+                showError(variantenText('formular.fehler_kein_termin_direkt', 'Bitte wählen Sie einen Termin aus.'));
+                return;
+            }
+            const terminId = auswahl.value;
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.textContent = variantenText('formular.button_wird_gebucht', 'Wird gebucht...');
+
+            try {
+                const encryptionKey = await crypto.getEncryptionKey(teacherId);
+                if (!encryptionKey) {
+                    throw new Error(variantenText('formular.fehler_schluessel', 'Verschlüsselungskey konnte nicht geladen werden. Bitte kontaktieren Sie die Lehrperson.'));
+                }
+
+                const batch = db.batch();
+                const antwortRef = db.collection('antworten').doc();
+                batch.set(antwortRef, {
+                    termin_gruppe_id: teacherId,
+                    kindname_encrypted: crypto.encrypt(name, encryptionKey),
+                    kindname_hash: crypto.hash(name),
+                    email_encrypted: crypto.encrypt(email, encryptionKey),
+                    verfuegbare_termine: [terminId],
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                batch.set(db.collection('zuteilungen').doc('direkt_' + terminId), {
+                    termin_id: terminId,
+                    antwort_id: antwortRef.id,
+                    user_id: teacherId,
+                    status: 'gebucht',
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                batch.update(db.collection('termine').doc(terminId), { ist_verfuegbar: false });
+                await batch.commit();
+            } catch (error) {
+                console.error('Direktbuchung fehlgeschlagen:', error);
+                btn.disabled = false;
+                btn.textContent = variantenText('formular.button_buchen', 'Termin buchen');
+                if (error.code === 'permission-denied') {
+                    // Meist: jemand anderes war schneller. Liste neu laden.
+                    await loadTermine();
+                    showError(variantenText('formular.fehler_schon_gebucht', 'Dieser Termin wurde soeben von jemand anderem gebucht. Bitte wählen Sie einen anderen Termin.'));
+                } else {
+                    showError('Fehler beim Buchen: ' + error.message);
+                }
+                return;
+            }
+
+            gebuchterTermin = verfuegbareTermine.find(t => t.id === terminId);
+            const datumText = new Date(gebuchterTermin.datum).toLocaleDateString('de-CH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const terminText = `${datumText}, ${gebuchterTermin.zeit} Uhr (${gebuchterTermin.dauer_minuten} Min.)` + (gespraechsort ? `<br>Ort: ${htmlText(gespraechsort)}` : '');
+            document.getElementById('success-direkt-text').innerHTML = variantenText('formular.erfolg_direkt',
+                `<strong>Ihr Termin ist gebucht:</strong><br>${terminText}<br><br>Möchten Sie umbuchen oder absagen, melden Sie sich bitte bei der Lehrperson.`, terminText);
+            document.getElementById('message').innerHTML = '';
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('success-direkt').style.display = 'block';
+        }
+
+        // Text für innerHTML entschärfen
+        function htmlText(text) {
+            return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Kalenderdatei für die eigene Buchung (Kalender der Mitarbeitenden)
+        function downloadBuchungICS() {
+            if (!gebuchterTermin) return;
+            const icsText = text => String(text).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+            const formatICSDate = date => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+            const beginn = new Date(gebuchterTermin.datum + 'T' + gebuchterTermin.zeit);
+            const ende = new Date(beginn.getTime() + gebuchterTermin.dauer_minuten * 60000);
+            const leitung = teacherName || 'Schulleitung';
+            const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:${variantenText('ics.prodid', '-//Elterngespräch-Planer//DE')}
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:${variantenText('ics.uid_praefix', 'elterngespraech')}-buchung-${gebuchterTermin.id}@elterngespraeche.app
+DTSTAMP:${formatICSDate(new Date())}
+DTSTART:${formatICSDate(beginn)}
+DTEND:${formatICSDate(ende)}
+SUMMARY:${icsText(variantenText('ics.titel', 'Elterngespräch', leitung))}
+DESCRIPTION:${icsText(variantenText('ics.beschreibung', 'Elterngespräch'))}
+LOCATION:${icsText(gespraechsort || 'Schule')}
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+END:VCALENDAR`;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+            link.download = variantenText('datei.ics_buchung', 'Elterngespraech_Termin.ics');
+            link.click();
+        }
+
         function showError(text) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('message').innerHTML = `<div class="alert alert-error"><strong>Fehler:</strong> ${text}</div>`;

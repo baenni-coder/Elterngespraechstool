@@ -290,6 +290,14 @@ Derselbe Code läuft als zwei getrennte Instanzen mit **eigenem Firebase-Projekt
 - **Logik-Unterschied**: Im MAG zählt pro Name (`kindname_hash`) nur die **neueste** Antwort
   (`loadAntworten()`, `ersetzteAntworten`) - keine Schnittmenge wie bei getrennten Eltern.
   War eine ersetzte Antwort schon zugeteilt, zeigt die Zuteilung den Hinweis "Neu zuteilen".
+- **Direktbuchung (nur MAG)**: `settings.buchungsart` = `'zuteilung'` (Standard) oder `'direkt'`.
+  Bei `'direkt'` bucht das Formular ohne Login genau einen freien Termin, in **einem** Batch:
+  Antwort + Zuteilung mit fester ID `direkt_<terminId>` (Status `gebucht`) + Termin
+  `ist_verfuegbar: false`. Die feste ID verhindert Doppelbuchungen; die Rules
+  (`direktbuchung*` in `firestore.rules`) erlauben ohne Login nur genau diesen Batch.
+  Keine Bestätigungsmail (das Formular darf keine Mails einreihen) - stattdessen Bestätigung
+  und ICS im Formular. `saveZuteilungen()` bricht ab und lädt neu, wenn seit dem Laden neue
+  Buchungen eingegangen sind (sonst würden sie gelöscht). Die Eltern-Variante ignoriert die Einstellung.
 - Neue Texte immer für **beide** Varianten prüfen; MAG ist in Du-Form.
 
 ## Wichtige Funktionen
