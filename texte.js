@@ -27,6 +27,14 @@ const MAG_TEXTE = {
     'formular.fehler_kein_name': 'Bitte gib deinen Namen ein.',
     'formular.fehler_kein_termin': 'Bitte wähle mindestens einen Termin aus.',
     'formular.fehler_zu_wenig_termine': (min, minWort, anzahl, anzahlWort) => `Bitte wähle mindestens ${min} ${minWort} aus. Du hast ${anzahl} ${anzahlWort} ausgewählt.`,
+    // Direktbuchung (settings.buchungsart == 'direkt', nur MAG)
+    'formular.label_termin_direkt': 'Welcher Termin passt dir? * <span style="font-weight: normal; color: #666;">(Der Termin ist danach fest gebucht)</span>',
+    'formular.button_buchen': 'Termin buchen',
+    'formular.button_wird_gebucht': 'Wird gebucht...',
+    'formular.fehler_kein_termin_direkt': 'Bitte wähle einen Termin aus.',
+    'formular.fehler_schon_gebucht': 'Dieser Termin wurde soeben von jemand anderem gebucht. Bitte wähle einen anderen Termin.',
+    'formular.erfolg_direkt': (terminText) => `<strong>Dein Termin ist gebucht:</strong><br>${terminText}<br><br>Möchtest du umbuchen oder absagen, melde dich bitte bei der Schulleitung.`,
+    'datei.ics_buchung': 'MAG_Termin.ics',
     'formular.fehler_schluessel': 'Verschlüsselungskey konnte nicht geladen werden. Bitte melde dich bei der Schulleitung.',
 
     // ---------- index.html ----------
@@ -110,6 +118,7 @@ const MAG_TEXTE = {
     'dashboard.konto_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.',
 
     // ---------- lehrer-dashboard.html (Teil 2: Mails, Kalender, Export) ----------
+    'dashboard.neue_buchungen': 'Inzwischen sind neue Buchungen eingegangen. Die Ansicht wird neu geladen - bitte prüfe die Zuteilung und speichere erneut.',
     'dashboard.platzhalter_ort': 'z.B. Büro Schulleitung',
     'dashboard.konsole_pruefen': 'Bitte prüfe die Konsole.',
     'dashboard.vorlagen_intro': 'Kopiere die E-Mail-Texte und sende sie an die Mitarbeitenden:',
