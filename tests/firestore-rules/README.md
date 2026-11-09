@@ -12,5 +12,5 @@ npm install
 npm test
 ```
 
-Erwartet: `Ergebnis: 48 korrekt, 0 falsch`. Nach jeder Änderung an `firestore.rules`
+Erwartet: `Ergebnis: 66 korrekt, 0 falsch`. Nach jeder Änderung an `firestore.rules`
 (oder an Abfragen im Code) ausführen und die Tests bei Bedarf ergänzen.

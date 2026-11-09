@@ -16,7 +16,10 @@ await env.withSecurityRulesDisabled(async ctx => {
   await s('zuteilungen/zA', { termin_id: 'tA1', antwort_id: 'aA', user_id: 'A', status: 'zugeteilt' });
   await s('zuteilungen/zB', { termin_id: 'tB1', antwort_id: 'aB', user_id: 'B', status: 'zugeteilt' });
   await s('zuteilungen/zAlt', { termin_id: 'tA1', antwort_id: 'aA', status: 'zugeteilt' });
-  await s('mail/mA', { to: 'e@x.ch', _meta: { lehrer_uid: 'A' } }); await s('mail/mB', { to: 'e@x.ch', _meta: { lehrer_uid: 'B' } });
+  await s('mail/mA', { to: 'e@x.ch', _meta: { lehrer_uid: 'A' } });
+  // MAG-Direktbuchung: Schulleitung D hat "direkt" eingestellt
+  await s('settings/D', { teacher_name: 'D', buchungsart: 'direkt' }); await s('encryption_keys/D', { encryption_key: 'kD' });
+  for (const [id, frei] of [['dT1', true], ['dT2', false], ['dT3', true], ['dT4', true], ['dT5', true]]) await s('termine/' + id, { user_id: 'D', datum: '2026-12-01', zeit: '10:00', dauer_minuten: 30, ist_verfuegbar: frei }); await s('mail/mB', { to: 'e@x.ch', _meta: { lehrer_uid: 'B' } });
 });
 const lehrer = (uid, email, verified = true) => env.authenticatedContext(uid, { email, email_verified: verified }).firestore();
 const anon = env.unauthenticatedContext().firestore();
@@ -91,6 +94,37 @@ await t('Mail-Status ändern', false, () => updateDoc(doc(A, 'mail/mA'), { deliv
 await t('Settings von B ändern', false, () => setDoc(doc(A, 'settings/B'), { teacher_name: 'Hack' }));
 await t('eigenen Schlüssel überschreiben', false, () => setDoc(doc(A, 'encryption_keys/A'), { encryption_key: 'neu' }));
 await t('Schlüssel von B anlegen/überschreiben', false, () => setDoc(doc(A, 'encryption_keys/B'), { encryption_key: 'neu' }));
+
+console.log('MAG-Direktbuchung (ohne Login):');
+// Wie eltern-formular.html: ein Batch aus Antwort + Zuteilung "direkt_<termin>" + Termin belegt
+const buchen = (db, terminId, o = {}) => {
+  const lehrer = o.lehrer || 'D';
+  const b = writeBatch(db);
+  const aRef = doc(collection(db, 'antworten'));
+  b.set(aRef, { termin_gruppe_id: lehrer, kindname_encrypted: 'enc', kindname_hash: 'hash', email_encrypted: 'enc', verfuegbare_termine: o.antwortTermine || [terminId], created_at: serverTimestamp() });
+  if (!o.ohneZuteilung) b.set(doc(db, 'zuteilungen', o.zid || 'direkt_' + terminId), { termin_id: terminId, antwort_id: aRef.id, user_id: o.zuteilungUser || lehrer, status: o.status || 'gebucht', created_at: serverTimestamp() });
+  if (!o.ohneTermin) b.update(doc(db, 'termine', terminId), { ist_verfuegbar: false });
+  return b.commit();
+};
+await t('freien Termin buchen', true, () => buchen(anon, 'dT1'));
+await t('denselben Termin nochmals buchen (Doppelbuchung)', false, () => buchen(anon, 'dT1'));
+await t('belegten Termin buchen', false, () => buchen(anon, 'dT2'));
+await t('Termin einer Lehrperson ohne Direktbuchung buchen', false, () => buchen(anon, 'tB1', { lehrer: 'B' }));
+await t('falsche Buchungsnummer', false, () => buchen(anon, 'dT3', { zid: 'irgendwas' }));
+await t('Buchung ohne Termin auf belegt zu setzen', false, () => buchen(anon, 'dT3', { ohneTermin: true }));
+await t('Termin belegen ohne Buchung', false, () => buchen(anon, 'dT3', { ohneZuteilung: true }));
+await t('Buchung mit falschem Status', false, () => buchen(anon, 'dT3', { status: 'zugeteilt' }));
+await t('Buchung im Namen einer anderen Lehrperson', false, () => buchen(anon, 'dT3', { zuteilungUser: 'A' }));
+await t('Antwort mit mehreren Terminen', false, () => buchen(anon, 'dT3', { antwortTermine: ['dT3', 'dT4'] }));
+await t('belegten Termin wieder freigeben', false, () => updateDoc(doc(anon, 'termine/dT2'), { ist_verfuegbar: true }));
+await t('anderes Feld eines freien Termins ändern', false, () => updateDoc(doc(anon, 'termine/dT4'), { zeit: '06:00' }));
+await t('Buchung löschen (stornieren)', false, () => deleteDoc(doc(anon, 'zuteilungen/direkt_dT1')));
+await t('Buchungen lesen (Formular prüft freie Termine)', true, () => getDocs(query(collection(anon, 'zuteilungen'), where('termin_id', 'in', ['dT1', 'dT3']))));
+const D = lehrer('D', 'd@belose.ch');
+await t('Schulleitung D: Buchung aufheben (Zuteilung löschen)', true, () => deleteDoc(doc(D, 'zuteilungen/direkt_dT1')));
+await t('Schulleitung D: Termin wieder freigeben', true, () => updateDoc(doc(D, 'termine/dT1'), { ist_verfuegbar: true }));
+await t('nach Freigabe erneut buchbar', true, () => buchen(anon, 'dT1'));
+await t('Schulleitung D: Zuteilung mit Zufalls-ID (Dashboard) anlegen', true, () => addDoc(collection(D, 'zuteilungen'), { termin_id: 'dT5', antwort_id: 'x', user_id: 'D', status: 'zugeteilt' }));
 
 console.log(`\nErgebnis: ${ok} korrekt, ${fail} falsch`);
 await env.cleanup();

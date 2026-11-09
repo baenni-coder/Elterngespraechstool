@@ -40,11 +40,54 @@ service cloud.firestore {
       allow read: if true;
       allow create: if istLehrperson()
         && request.resource.data.user_id == request.auth.uid;
-      allow update: if istLehrperson()
-        && resource.data.user_id == request.auth.uid
-        && request.resource.data.user_id == request.auth.uid;
+      allow update: if (istLehrperson()
+          && resource.data.user_id == request.auth.uid
+          && request.resource.data.user_id == request.auth.uid)
+        || direktbuchungTermin(terminId);
       allow delete: if istLehrperson()
         && resource.data.user_id == request.auth.uid;
+    }
+
+    // ============================================
+    // MAG-Direktbuchung (settings.buchungsart == 'direkt')
+    // ============================================
+    // Ohne Login darf genau EIN freier Termin gebucht werden - in einem einzigen Batch aus
+    // Antwort (Create, Regeln siehe antworten) + Zuteilung "direkt_<terminId>" + Termin auf
+    // "belegt". Die feste Zuteilungs-ID verhindert Doppelbuchungen: ein zweiter Create auf
+    // dieselbe ID wäre ein Update und ist ohne Login verboten.
+
+    function direktbuchungErlaubt(lehrerId) {
+      let settingsPfad = /databases/$(database)/documents/settings/$(lehrerId);
+      return exists(settingsPfad)
+        && get(settingsPfad).data.get('buchungsart', 'zuteilung') == 'direkt';
+    }
+
+    // Termin von frei auf belegt setzen - nur dieses Feld, nur zusammen mit der Buchung
+    function direktbuchungTermin(terminId) {
+      return resource.data.ist_verfuegbar == true
+        && request.resource.data.ist_verfuegbar == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ist_verfuegbar'])
+        && direktbuchungErlaubt(resource.data.user_id)
+        && existsAfter(/databases/$(database)/documents/zuteilungen/$('direkt_' + terminId));
+    }
+
+    // Buchung (Zuteilung) anlegen
+    function direktbuchungZuteilung(zuteilungId) {
+      let d = request.resource.data;
+      let terminPfad = /databases/$(database)/documents/termine/$(d.termin_id);
+      let antwortPfad = /databases/$(database)/documents/antworten/$(d.antwort_id);
+      return d.keys().hasOnly(['termin_id', 'antwort_id', 'user_id', 'status', 'created_at'])
+        && d.termin_id is string && d.antwort_id is string
+        && zuteilungId == 'direkt_' + d.termin_id
+        && d.status == 'gebucht'
+        && d.created_at == request.time
+        && get(terminPfad).data.user_id == d.user_id
+        && get(terminPfad).data.ist_verfuegbar == true
+        && getAfter(terminPfad).data.ist_verfuegbar == false
+        && direktbuchungErlaubt(d.user_id)
+        && existsAfter(antwortPfad)
+        && getAfter(antwortPfad).data.termin_gruppe_id == d.user_id
+        && getAfter(antwortPfad).data.verfuegbare_termine == [d.termin_id];
     }
 
     // Antworten: Eltern erstellen ohne Login; lesen/ändern/löschen nur die
@@ -78,8 +121,9 @@ service cloud.firestore {
     // enthält nur IDs), schreiben nur die eigene Lehrperson (user_id).
     match /zuteilungen/{zuteilungId} {
       allow read: if true;
-      allow create: if istLehrperson()
-        && request.resource.data.user_id == request.auth.uid;
+      allow create: if (istLehrperson()
+          && request.resource.data.user_id == request.auth.uid)
+        || direktbuchungZuteilung(zuteilungId);
       allow update: if istLehrperson()
         && resource.data.user_id == request.auth.uid
         && request.resource.data.user_id == request.auth.uid;
