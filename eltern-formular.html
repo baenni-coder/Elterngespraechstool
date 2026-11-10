@@ -44,7 +44,10 @@
         }
         
         .header h1 {
-            font-size: 32px;
+            /* Auf schmalen Bildschirmen kleiner, damit lange Wörter wie
+               "Mitarbeitendengespräch" nicht über den Rand ragen (ab ~530px: 32px wie bisher) */
+            font-size: clamp(20px, 6vw, 32px);
+            overflow-wrap: anywhere;
             margin-bottom: 8px;
         }
         
@@ -105,8 +108,10 @@
             border-color: #667eea;
         }
         
-        .checkbox-item input[type="checkbox"] {
+        .checkbox-item input[type="checkbox"],
+        .checkbox-item input[type="radio"] {
             width: 22px;
+            flex-shrink: 0;
             height: 22px;
             margin-right: 14px;
             cursor: pointer;
