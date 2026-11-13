@@ -998,6 +998,13 @@
                                     <li><strong>"Antworten & Zuteilungen löschen":</strong> Behält Ihre Termine, löscht nur die Eltern-Antworten. Ideal für eine neue Runde mit denselben Zeitfenstern.</li>
                                     <li><strong>"Alles löschen":</strong> Löscht alles (Termine, Antworten, Zuteilungen). Für einen kompletten Neustart.</li>
                                 </ul>
+                                <p style="margin-top: 10px;"><strong>Reihenfolge für eine neue Runde:</strong></p>
+                                <ol>
+                                    <li>Antworten der letzten Runde löschen (bzw. alles löschen)</li>
+                                    <li>Neue Termine erfassen</li>
+                                    <li>Erst dann den Link an die Eltern schicken - der Link bleibt derselbe wie in der letzten Runde</li>
+                                </ol>
+                                <p style="margin-top: 10px;">Andersherum würden Antworten, die schon für die neue Runde eingegangen sind, mitgelöscht. Vergangene Termine bietet das Formular automatisch nicht mehr an.</p>
                                 <p style="margin-top: 10px; color: #e74c3c;"><strong>Achtung:</strong> Diese Aktionen können nicht rückgängig gemacht werden!</p>
                             </div>
                         </div>
@@ -1270,6 +1277,13 @@
                                     <li><strong>"Antworten & Zuteilungen löschen":</strong> Behält deine Termine und löscht nur die Antworten. Ideal für eine neue Runde mit denselben Zeitfenstern.</li>
                                     <li><strong>"Alles löschen":</strong> Löscht deine Termine, Antworten und Zuteilungen - für einen kompletten Neustart.</li>
                                 </ul>
+                                <p style="margin-top: 10px;"><strong>Reihenfolge für eine neue Runde:</strong></p>
+                                <ol>
+                                    <li>Antworten der letzten Runde löschen (bzw. alles löschen)</li>
+                                    <li>Neue Termine erfassen</li>
+                                    <li>Erst dann den Link an die Mitarbeitenden schicken - der Link bleibt derselbe wie in der letzten Runde</li>
+                                </ol>
+                                <p style="margin-top: 10px;">Andersherum würden Antworten, die schon für die neue Runde eingegangen sind, mitgelöscht. Vergangene Termine bietet das Formular automatisch nicht mehr an.</p>
                                 <p style="margin-top: 10px;">Gelöscht werden immer nur <strong>deine eigenen</strong> Daten.</p>
                                 <p style="margin-top: 10px; color: #e74c3c;"><strong>Achtung:</strong> Diese Aktionen können nicht rückgängig gemacht werden!</p>
                             </div>
@@ -1496,10 +1510,13 @@
                         day: 'numeric'
                     });
 
+                    // Vergangene Termine grau markieren (werden im Formular nicht mehr angeboten)
+                    const vergangen = new Date(termin.datum + 'T' + termin.zeit) < new Date();
+
                     return `
-                        <div class="termin-card">
+                        <div class="termin-card"${vergangen ? ' style="opacity: 0.5;"' : ''}>
                             <div class="info">
-                                <strong>${formattedDate}, ${termin.zeit} Uhr</strong><br>
+                                <strong>${formattedDate}, ${termin.zeit} Uhr</strong>${vergangen ? ' <span style="color: #999; font-size: 13px;">(vergangen)</span>' : ''}<br>
                                 <span style="color: #666;">Dauer: ${termin.dauer_minuten} Minuten</span>
                             </div>
                             <div class="actions">
@@ -2790,7 +2807,18 @@ END:VEVENT
             return { antworten, zuteilungen };
         }
 
+        // Warnung, wenn unter den zu löschenden Antworten neue sind - vermutlich schon für die
+        // nächste Runde (Link zu früh verschickt). Richtige Reihenfolge: löschen, Termine, Link.
+        function neueAntwortenBestaetigt() {
+            const grenze = Date.now() - 3 * 24 * 60 * 60 * 1000;
+            const anzahl = allAntworten.filter(a => zeitstempelMs(a.created_at) >= grenze).length;
+            if (anzahl === 0) return true;
+            return confirm(variantenText('dashboard.reset_neue_antworten',
+                `⚠️ Darunter sind ${anzahl} Antworten aus den letzten 3 Tagen – vermutlich bereits für die neue Runde.\n\nFür eine neue Runde zuerst löschen, dann neue Termine erfassen und erst danach den Link verschicken.\n\nTrotzdem löschen?`, anzahl));
+        }
+
         async function resetAntworten() {
+            if (!neueAntwortenBestaetigt()) return;
             if (!confirm(variantenText('dashboard.reset_confirm_1', '⚠️ ACHTUNG!\n\nDies löscht ALLE Eltern-Antworten und Zuteilungen.\nIhre Termine bleiben erhalten.\n\nWirklich fortfahren?'))) {
                 return;
             }
@@ -2861,6 +2889,7 @@ END:VEVENT
         }
         
         async function resetAlles() {
+            if (!neueAntwortenBestaetigt()) return;
             if (!confirm(variantenText('dashboard.alles_confirm_1', '⚠️⚠️ ACHTUNG! ⚠️⚠️\n\nDies löscht ALLES:\n- Alle Termine\n- Alle Eltern-Antworten\n- Alle Zuteilungen\n\nWirklich ALLES löschen?'))) {
                 return;
             }
