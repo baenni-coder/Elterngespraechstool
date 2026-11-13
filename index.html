@@ -106,6 +106,47 @@
             color: #0c5460;
         }
 
+        /* Zuletzt geöffnete Formulare */
+        .letzte-formulare {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .letzte-formulare-titel {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .formular-eintrag {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .formular-eintrag a {
+            flex: 1;
+            text-align: left;
+            padding: 12px 14px;
+            font-size: 15px;
+        }
+
+        .formular-entfernen {
+            flex-shrink: 0;
+            width: 44px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            color: #999;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .formular-entfernen:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
         .impressum-link {
             margin-top: 24px;
             font-size: 13px;
@@ -133,14 +174,23 @@
                 <small style="font-weight: normal; font-size: 14px;">Termine verwalten & zuteilen</small>
             </a>
 
-            <a href="eltern-formular.html" class="btn btn-secondary" id="eltern-btn" data-mag-html="start.button_formular">
+            <a href="#" class="btn btn-secondary" id="eltern-btn" data-mag-html="start.button_formular" onclick="formularButtonGeklickt(); return false;">
                 👪 Für Eltern<br>
                 <small style="font-weight: normal; font-size: 14px;">Verfügbarkeit angeben</small>
             </a>
         </div>
 
+        <!-- Hinweis nach Klick auf "Für Eltern" (siehe formularButtonGeklickt) -->
+        <div class="info" id="formular-hinweis" style="display: none; margin-top: 20px;"></div>
+
+        <!-- Zuletzt auf diesem Gerät geöffnete Formulare (localStorage, siehe eltern-formular.html) -->
+        <div class="letzte-formulare" id="letzte-formulare" style="display: none;">
+            <p class="letzte-formulare-titel" data-mag-text="start.letzte_titel">Zuletzt geöffnete Formulare:</p>
+            <div id="letzte-formulare-liste"></div>
+        </div>
+
         <div class="info" data-mag-html="start.info">
-            <strong>Für Eltern:</strong> Klicken Sie auf "Für Eltern" und geben Sie Ihre verfügbaren Termine an.<br><br>
+            <strong>Für Eltern:</strong> Öffnen Sie den Link aus der E-Mail Ihrer Lehrperson. Zuletzt geöffnete Formulare finden Sie auch hier auf der Startseite.<br><br>
             <strong>Für Lehrpersonen:</strong> Melden Sie sich an, um Termine zu erstellen und zuzuteilen.
         </div>
     </div>
@@ -150,25 +200,97 @@
     </p>
 
     <script>
-        // Beim Laden: Prüfe ob ein letzter Link gespeichert ist
-        window.onload = function() {
-            loadLastLink();
-        };
+        // Zuletzt geöffnete Formulare (nur auf diesem Gerät gespeichert, siehe eltern-formular.html).
+        // Pro Eintrag nur die Kennung der Lehrperson und ihr Name - die Termine lädt das Formular
+        // immer frisch, ein Eintrag bleibt also auch für spätere Gesprächsrunden gültig.
+        const FORMULAR_SPEICHER = 'elterngespraech_formulare';
 
-        function loadLastLink() {
+        function formulareLesen() {
             try {
-                // Hole letzten verwendeten Link aus localStorage
-                const lastTeacherId = localStorage.getItem('elterngespraech_last_link');
-
-                if (lastTeacherId) {
-                    // Aktualisiere den "Für Eltern" Button mit dem gespeicherten Link
-                    const elternBtn = document.getElementById('eltern-btn');
-                    elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
+                let liste = JSON.parse(localStorage.getItem(FORMULAR_SPEICHER) || '[]').filter(e => e && e.id);
+                // Übernahme des früheren Einzel-Links (vor 2026-11)
+                const alterLink = localStorage.getItem('elterngespraech_last_link');
+                if (alterLink && !liste.some(e => e.id === alterLink)) {
+                    liste.push({ id: alterLink, name: '' });
+                    localStorage.setItem(FORMULAR_SPEICHER, JSON.stringify(liste.slice(0, 5)));
                 }
+                localStorage.removeItem('elterngespraech_last_link');
+                return liste.slice(0, 5);
             } catch (error) {
-                console.error('Fehler beim Laden des letzten Links:', error);
+                console.error('Fehler beim Lesen des localStorage:', error);
+                return [];
             }
         }
+
+        function formulareSpeichern(liste) {
+            try {
+                localStorage.setItem(FORMULAR_SPEICHER, JSON.stringify(liste));
+            } catch (error) {
+                console.error('Fehler beim Speichern im localStorage:', error);
+            }
+        }
+
+        function htmlText(text) {
+            return String(text).replace(/[&<>"']/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[z]));
+        }
+
+        function formulareAnzeigen() {
+            const liste = formulareLesen();
+            const bereich = document.getElementById('letzte-formulare');
+            const container = document.getElementById('letzte-formulare-liste');
+            bereich.style.display = liste.length > 0 ? 'block' : 'none';
+            container.innerHTML = liste.map(e => {
+                const anzeige = e.name
+                    ? variantenText('start.eintrag', `Lehrperson: ${htmlText(e.name)}`, htmlText(e.name))
+                    : variantenText('start.eintrag_ohne_name', 'Formular (Name unbekannt)');
+                return `
+                    <div class="formular-eintrag">
+                        <a class="btn btn-secondary" href="eltern-formular.html?teacher=${encodeURIComponent(e.id)}">📅 ${anzeige}</a>
+                        <button type="button" class="formular-entfernen" title="${variantenText('start.entfernen', 'Aus der Liste entfernen')}" onclick="formularEntfernen('${encodeURIComponent(e.id)}')">✕</button>
+                    </div>`;
+            }).join('');
+        }
+
+        function formularEntfernen(id) {
+            id = decodeURIComponent(id);
+            formulareSpeichern(formulareLesen().filter(e => e.id !== id));
+            formulareAnzeigen();
+        }
+
+        // Namen frisch aus den Einstellungen der Lehrpersonen holen (öffentlich lesbar, wie im Formular)
+        async function namenAktualisieren() {
+            const liste = formulareLesen();
+            let geaendert = false;
+            for (const eintrag of liste) {
+                try {
+                    const doc = await db.collection('settings').doc(eintrag.id).get();
+                    const name = doc.exists ? (doc.data().teacher_name || '') : eintrag.name;
+                    if (name !== eintrag.name) {
+                        eintrag.name = name;
+                        geaendert = true;
+                    }
+                } catch (error) {
+                    console.warn('Name konnte nicht geladen werden:', error);
+                }
+            }
+            if (geaendert) {
+                formulareSpeichern(liste);
+                formulareAnzeigen();
+            }
+        }
+
+        function formularButtonGeklickt() {
+            const hinweis = document.getElementById('formular-hinweis');
+            hinweis.innerHTML = formulareLesen().length > 0
+                ? variantenText('start.hinweis_mit_liste', 'Bitte öffnen Sie den Link aus der E-Mail Ihrer Lehrperson – oder wählen Sie unten eines der zuletzt geöffneten Formulare.')
+                : variantenText('start.hinweis_ohne_liste', 'Bitte öffnen Sie den Link aus der E-Mail Ihrer Lehrperson. Jede Lehrperson hat ihren eigenen Link.');
+            hinweis.style.display = 'block';
+        }
+
+        window.onload = function() {
+            formulareAnzeigen();
+            namenAktualisieren();
+        };
     </script>
 </body>
 </html>

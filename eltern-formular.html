@@ -359,6 +359,7 @@
         let direktbuchung = false; // nur MAG: Schulleitung hat "Direkt buchen" eingestellt
         let gespraechsort = '';
         let gebuchterTermin = null; // nach erfolgreicher Direktbuchung (für Kalenderdatei)
+        let lehrpersonGefunden = false; // Settings der Lehrperson existieren (gültiger Link)
 
         // Beim Laden: Lehrer-ID aus URL holen und Termine laden
         window.onload = async () => {
@@ -370,11 +371,12 @@
                 return;
             }
 
-            // Speichere Link im localStorage
-            saveLastLink(teacherId);
-
             await loadTeacherName();
             await loadSettings();
+            // Für die Startseite merken - nur wenn es die Lehrperson wirklich gibt
+            if (lehrpersonGefunden) {
+                formularMerken(teacherId, teacherName);
+            }
             await loadTermine();
         };
 
@@ -402,6 +404,7 @@
             try {
                 const doc = await db.collection('settings').doc(teacherId).get();
                 if (doc.exists) {
+                    lehrpersonGefunden = true;
                     const settings = doc.data();
                     minTermineAnzahl = settings.min_termine_anzahl || 3;
                     // Direktbuchung gibt es nur in der MAG-Variante
@@ -426,10 +429,11 @@
                     .orderBy('zeit', 'asc')
                     .get();
 
-                const termine = termineSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                // Vergangene Termine (z.B. aus der letzten Gesprächsrunde) nicht mehr anbieten
+                const jetzt = new Date();
+                const termine = termineSnapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(t => new Date(t.datum + 'T' + t.zeit) > jetzt);
 
                 if (!termine || termine.length === 0) {
                     showError(variantenText('formular.fehler_keine_termine', 'Aktuell sind keine Termine verfügbar. Bitte kontaktieren Sie die Lehrperson.'));
@@ -741,11 +745,15 @@ END:VCALENDAR`;
             document.getElementById('message').innerHTML = `<div class="alert alert-info">${text}</div>`;
         }
 
-        function saveLastLink(teacherId) {
+        // Zuletzt geöffnete Formulare für die Startseite (nur auf diesem Gerät, siehe index.html):
+        // höchstens 5, neuestes zuerst, mit Namen der Lehrperson.
+        function formularMerken(teacherId, name) {
             try {
-                // Speichere den letzten verwendeten Link (teacherId)
-                localStorage.setItem('elterngespraech_last_link', teacherId);
-                console.log('Letzter Link gespeichert');
+                const liste = JSON.parse(localStorage.getItem('elterngespraech_formulare') || '[]')
+                    .filter(eintrag => eintrag && eintrag.id && eintrag.id !== teacherId);
+                liste.unshift({ id: teacherId, name: name || '' });
+                localStorage.setItem('elterngespraech_formulare', JSON.stringify(liste.slice(0, 5)));
+                localStorage.removeItem('elterngespraech_last_link'); // früherer Einzel-Link (vor 2026-11)
             } catch (error) {
                 console.error('Fehler beim Speichern im localStorage:', error);
             }

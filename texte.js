@@ -42,7 +42,10 @@ const MAG_TEXTE = {
     'start.titel': '📅 MAG-Planer',
     'start.button_leitung': '💼 Für Schulleitungen<br><small style="font-weight: normal; font-size: 14px;">Termine verwalten & zuteilen</small>',
     'start.button_formular': '👥 Für Mitarbeitende<br><small style="font-weight: normal; font-size: 14px;">Verfügbarkeit angeben</small>',
-    'start.info': '<strong>Für Mitarbeitende:</strong> Klicke auf "Für Mitarbeitende" und gib deine verfügbaren Termine an.<br><br><strong>Für Schulleitungen:</strong> Melde dich an, um Termine zu erstellen und zuzuteilen.',
+    'start.info': '<strong>Für Mitarbeitende:</strong> Öffne den Link aus der E-Mail deiner Schulleitung. Zuletzt geöffnete Formulare findest du auch hier auf der Startseite.<br><br><strong>Für Schulleitungen:</strong> Melde dich an, um Termine zu erstellen und zuzuteilen.',
+    'start.eintrag': (name) => `Schulleitung: ${name}`,
+    'start.hinweis_mit_liste': 'Bitte öffne den Link aus der E-Mail deiner Schulleitung – oder wähle unten eines der zuletzt geöffneten Formulare.',
+    'start.hinweis_ohne_liste': 'Bitte öffne den Link aus der E-Mail deiner Schulleitung. Jede Schulleitung hat ihren eigenen Link.',
 
     // ---------- lehrer-login.html ----------
     // Registrierung ist in der MAG-Variante ausgeblendet; Konten werden in der Firebase Console angelegt.

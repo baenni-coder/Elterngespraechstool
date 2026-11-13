@@ -257,18 +257,19 @@ Dies ermöglicht die Gruppierung von getrennten Eltern unter dem gleichen Kindna
 
 ### 7. LocalStorage
 
-**Verwendung**: Speichert letzten verwendeten Link für einfachen Zugriff
+**Verwendung**: Liste der zuletzt geöffneten Formulare für die Startseite (nur auf dem Gerät).
 
 ```javascript
-// Speichern (eltern-formular.html):
-localStorage.setItem('elterngespraech_last_link', teacherId);
+// eltern-formular.html -> formularMerken(): nur wenn die Settings der Lehrperson existieren
+localStorage 'elterngespraech_formulare' = [{ id: teacherId, name: teacher_name }, ...] // max. 5, neuestes zuerst
 
-// Laden (index.html):
-const lastTeacherId = localStorage.getItem('elterngespraech_last_link');
-elternBtn.href = `eltern-formular.html?teacher=${lastTeacherId}`;
+// index.html: "Für Eltern" zeigt einen Hinweis auf den Link aus der E-Mail; darunter die Liste
+// mit einem Button pro Lehrperson (+ ✕ zum Entfernen). Namen werden beim Laden frisch aus
+// settings geholt. Der frühere Einzel-Link 'elterngespraech_last_link' wird übernommen und gelöscht.
 ```
 
-**Hinweis**: Nur der letzte Link wird gespeichert, NICHT mehrere Kinder-Links.
+**Hinweis**: Ein Eintrag zeigt auf die Lehrperson, nicht auf eine Gesprächsrunde - das Formular
+lädt die Termine immer frisch und blendet vergangene Termine aus.
 
 ### 8. Varianten: Elterngespräch / Mitarbeitendengespräch (MAG)
 
