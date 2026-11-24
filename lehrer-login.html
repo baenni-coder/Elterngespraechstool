@@ -256,6 +256,33 @@
             return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
+        // Verständliche Meldung für Login-Fehler statt des englischen Firebase-Texts.
+        // Falsches Passwort und unbekannte Adresse werden gleich behandelt (bei aktiver
+        // E-Mail-Enumeration-Protection meldet Firebase ohnehin nur 'invalid-credential').
+        function loginFehlerText(error) {
+            switch (error && error.code) {
+                case 'auth/wrong-password':
+                case 'auth/user-not-found':
+                case 'auth/invalid-credential':
+                case 'auth/invalid-login-credentials':
+                    return variantenText('login.fehler_zugangsdaten',
+                        'E-Mail-Adresse oder Passwort ist falsch. Bitte prüfen Sie Ihre Eingabe. Haben Sie Ihr Passwort vergessen? Klicken Sie unten auf <strong>„Passwort vergessen?“</strong> - Sie erhalten dann einen Link, um ein neues Passwort zu setzen.');
+                case 'auth/invalid-email':
+                    return variantenText('login.vergessen_ungueltig', 'Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+                case 'auth/too-many-requests':
+                    return variantenText('login.fehler_zu_viele',
+                        'Zu viele fehlgeschlagene Anmeldeversuche. Bitte warten Sie einige Minuten oder setzen Sie Ihr Passwort über <strong>„Passwort vergessen?“</strong> zurück.');
+                case 'auth/user-disabled':
+                    return variantenText('login.fehler_gesperrt',
+                        'Dieses Konto wurde deaktiviert. Bitte wenden Sie sich an die Betreiber des Tools (siehe Impressum).');
+                case 'auth/network-request-failed':
+                    return variantenText('login.fehler_netzwerk',
+                        'Keine Verbindung zum Server. Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.');
+                default:
+                    return 'Fehler beim Login: ' + htmlText(error && error.message ? error.message : error);
+            }
+        }
+
         // Rücksetz-Link über Firebase anfordern. Ob ein Konto existiert, wird bewusst nicht
         // verraten (gleiche Meldung) - sonst liesse sich ausprobieren, welche Adressen ein Konto haben.
         async function passwortVergessen(e) {
@@ -287,7 +314,7 @@
             }
 
             showMessage(variantenText('login.vergessen_gesendet',
-                `Falls ein Konto mit <strong>${htmlText(email)}</strong> existiert, haben wir Ihnen einen Link zum Zurücksetzen des Passworts geschickt. Bitte prüfen Sie auch den Spam-Ordner.`,
+                `Falls ein Konto mit <strong>${htmlText(email)}</strong> existiert, haben wir Ihnen einen Link zum Zurücksetzen des Passworts geschickt. Bitte prüfen Sie auch den Spam-Ordner.<br><br>Der Link ist eine Stunde gültig und funktioniert nur einmal. Haben Sie mehrere Links angefordert, gilt nur der <strong>neueste</strong>.`,
                 htmlText(email)), 'info');
         }
 
@@ -326,7 +353,7 @@
                 }, 1000);
 
             } catch (error) {
-                showMessage('Fehler beim Login: ' + error.message, 'error');
+                showMessage(loginFehlerText(error), 'error');
                 btn.disabled = false;
                 btn.textContent = 'Anmelden';
             }
@@ -383,9 +410,27 @@
                 }
 
             } catch (error) {
-                showMessage('Fehler bei der Registrierung: ' + error.message, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Konto erstellen';
+
+                if (error.code === 'auth/email-already-in-use') {
+                    // Häufigster Fall: Lehrperson hat das Passwort vergessen und versucht,
+                    // sich neu zu registrieren. Zum Login wechseln und Adresse übernehmen.
+                    showLogin();
+                    document.getElementById('login-email').value = email;
+                    document.getElementById('login-password').focus();
+                    showMessage(`Mit <strong>${htmlText(email)}</strong> besteht bereits ein Konto - Ihre Daten sind noch vorhanden. Bitte melden Sie sich an. Falls Sie Ihr Passwort nicht mehr wissen, klicken Sie auf <strong>„Passwort vergessen?“</strong>.`, 'info');
+                    return;
+                }
+                if (error.code === 'auth/weak-password') {
+                    showMessage('Das Passwort ist zu schwach. Bitte wählen Sie mindestens 6 Zeichen.', 'error');
+                    return;
+                }
+                if (error.code === 'auth/invalid-email') {
+                    showMessage('Bitte geben Sie eine gültige E-Mail-Adresse ein.', 'error');
+                    return;
+                }
+                showMessage('Fehler bei der Registrierung: ' + htmlText(error.message), 'error');
             }
         }
     </script>
