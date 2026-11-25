@@ -56,7 +56,11 @@ const MAG_TEXTE = {
     'login.vergessen_email_fehlt': 'Bitte gib oben deine E-Mail-Adresse ein und klicke dann nochmals auf „Passwort vergessen?“.',
     'login.vergessen_ungueltig': 'Bitte gib eine gültige E-Mail-Adresse ein.',
     'login.vergessen_zu_viele': 'Es wurden zu viele Links angefordert. Bitte versuche es in einigen Minuten erneut.',
-    'login.vergessen_gesendet': (email) => `Falls ein Konto mit <strong>${email}</strong> existiert, haben wir dir einen Link zum Zurücksetzen des Passworts geschickt. Bitte prüfe auch den Spam-Ordner.`,
+    'login.vergessen_gesendet': (email) => `Falls ein Konto mit <strong>${email}</strong> existiert, haben wir dir einen Link zum Zurücksetzen des Passworts geschickt. Bitte prüfe auch den Spam-Ordner.<br><br>Der Link ist eine Stunde gültig und funktioniert nur einmal. Hast du mehrere Links angefordert, gilt nur der <strong>neueste</strong>.`,
+    'login.fehler_zugangsdaten': 'E-Mail-Adresse oder Passwort ist falsch. Bitte prüfe deine Eingabe. Hast du dein Passwort vergessen? Klicke unten auf <strong>„Passwort vergessen?“</strong> - du erhältst dann einen Link, um ein neues Passwort zu setzen.',
+    'login.fehler_zu_viele': 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte warte einige Minuten oder setze dein Passwort über <strong>„Passwort vergessen?“</strong> zurück.',
+    'login.fehler_gesperrt': 'Dieses Konto wurde deaktiviert. Bitte wende dich an die Betreiber des Tools (siehe Impressum).',
+    'login.fehler_netzwerk': 'Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung und versuche es erneut.',
 
     // ---------- lehrer-dashboard.html (Teil 1: Oberfläche) ----------
     // Hinweise zu "Elternteilen" erscheinen nur bei mehreren Antworten pro Name
